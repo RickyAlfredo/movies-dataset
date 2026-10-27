@@ -1,5 +1,5 @@
 """
-E-CV — Final Layout & Custom CRUD matching Node.js UI.
+E-CV — Final Layout matching Node.js UI.
 """
 
 import hashlib
@@ -86,38 +86,49 @@ SEED = {
     "masterPassword": "capstone12",
     "users": [
         {
-            "id": "user1", "name": "Nama User 1", "role": "Frontend Developer", "nim": "220010001",
-            "email": "email@example.com", "phone": "08123456789", "location": "Jakarta",
-            "bio": "Deskripsi profil singkat untuk User 1.",
+            "id": "user1", "name": "Ahmad Fauzi", "role": "Frontend Developer", "nim": "221001001",
+            "email": "ahmad.fauzi@example.com", "phone": "+62 812-3456-7890", "location": "Jakarta",
+            "bio": "Mahasiswa Teknik Informatika yang berfokus pada pengembangan web dan mobile.",
             "password": "password123", "profilePicture": "",
             "education": [
                 {"degree": "S1 Teknik Informatika", "institution": "Universitas Indonesia", "year": "2022 - Sekarang"},
+                {"degree": "SMA IPA", "institution": "SMA Negeri 1 Jakarta", "year": "2019 - 2022"},
             ],
             "experience": [
-                {"role": "Web Developer", "company": "PT Teknologi", "year": "2024", "description": "Membangun UI."},
+                {"role": "Web Developer Intern", "company": "PT Teknologi Maju", "year": "2024", "description": "Membangun dashboard admin menggunakan React dan Node.js."},
+                {"role": "Freelance Web Developer", "company": "Mandiri", "year": "2023 - Sekarang", "description": "Mengerjakan berbagai proyek landing page dan e-commerce untuk UMKM."},
             ],
-            "skills": ["HTML", "CSS", "JavaScript", "React"],
-            "mainProject": {"name": "Portfolio Website", "url": "https://github.com/user1"},
-            "otherProjects": [{"name": "Aplikasi Kasir", "url": "https://github.com/user1"}],
+            "skills": ["JavaScript", "Python", "React", "Node.js", "MySQL", "Git"],
+            "mainProject": {"name": "Sistem Informasi Akademik", "url": "https://github.com/ahmad/siakad"},
+            "otherProjects": [
+                {"name": "Aplikasi Kasir Sederhana", "url": "https://github.com/ahmad/kasir"},
+                {"name": "Portfolio Website", "url": "https://github.com/ahmad/portfolio"},
+            ],
             "files": [],
         },
         {
-            "id": "user2", "name": "Nama User 2", "role": "Backend Developer", "nim": "220010002",
-            "email": "user2@example.com", "phone": "08123456780", "location": "Bandung",
-            "bio": "Deskripsi profil singkat untuk User 2.",
+            "id": "user2", "name": "Siti Rahma", "role": "Backend Developer", "nim": "221001002",
+            "email": "siti.rahma@example.com", "phone": "+62 813-9876-5432", "location": "Bandung",
+            "bio": "Mahasiswi Sistem Informasi yang tertarik pada analisis data dan UI/UX design.",
             "password": "password123", "profilePicture": "",
-            "education": [{"degree": "S1 Sistem Informasi", "institution": "ITB", "year": "2021 - Sekarang"}],
-            "experience": [], "skills": ["Python", "Django", "PostgreSQL"], "mainProject": {"name": "", "url": ""},
-            "otherProjects": [], "files": [],
+            "education": [{"degree": "S1 Sistem Informasi", "institution": "Institut Teknologi Bandung", "year": "2022 - Sekarang"}],
+            "experience": [{"role": "UI/UX Design Intern", "company": "Startup Kreatif", "year": "2024", "description": "Merancang user flow dan wireframe untuk aplikasi mobile."}],
+            "skills": ["Figma", "UI Design", "UX Research", "SQL", "Tableau", "Python"],
+            "mainProject": {"name": "Dashboard Analitik Penjualan", "url": "https://github.com/siti/dashboard"},
+            "otherProjects": [{"name": "Redesign Aplikasi OVO", "url": "https://github.com/siti/ovo-redesign"}],
+            "files": [],
         },
         {
-            "id": "user3", "name": "Nama User 3", "role": "UI/UX Designer", "nim": "220010003",
-            "email": "user3@example.com", "phone": "08123456781", "location": "Surabaya",
-            "bio": "Deskripsi profil singkat untuk User 3.",
+            "id": "user3", "name": "Budi Santoso", "role": "IoT Engineer", "nim": "221001003",
+            "email": "budi.santoso@example.com", "phone": "+62 857-1111-2222", "location": "Yogyakarta",
+            "bio": "Mahasiswa Teknik Komputer yang berfokus pada embedded systems dan IoT. Suka bereksperimen dengan Raspberry Pi dan Arduino.",
             "password": "password123", "profilePicture": "",
-            "education": [{"degree": "S1 Desain", "institution": "ITS", "year": "2020 - Sekarang"}],
-            "experience": [], "skills": ["Figma", "Adobe XD"], "mainProject": {"name": "", "url": ""},
-            "otherProjects": [], "files": [],
+            "education": [{"degree": "S1 Teknik Komputer", "institution": "Universitas Gadjah Mada", "year": "2021 - Sekarang"}],
+            "experience": [{"role": "IoT Engineer Intern", "company": "PT Smart Device", "year": "2024", "description": "Mengembangkan firmware perangkat IoT berbasis ESP32."}],
+            "skills": ["C++", "Arduino", "Raspberry Pi", "Python", "MQTT", "Linux"],
+            "mainProject": {"name": "Sistem Monitoring Suhu IoT", "url": "https://github.com/budi/iot-monitor"},
+            "otherProjects": [{"name": "Smart Home Controller", "url": "https://github.com/budi/smarthome"}],
+            "files": [],
         },
     ],
 }
@@ -165,46 +176,34 @@ def build_css() -> str:
     return """
 <style>
 /* Main Background and Layout */
-.stApp {
-    background: #0f172a !important;
-    background-attachment: fixed !important;
-    color: #e2e8f0 !important;
-    font-family: 'Inter', sans-serif !important;
-}
+body { background-color: #0f172a !important; }
+.stApp { background: transparent !important; color: #e2e8f0 !important; font-family: 'Inter', sans-serif !important; }
 .block-container {
-    padding-top: 2rem !important;
-    padding-bottom: 3rem !important;
-    max-width: 1100px !important;
-    position: relative;
-    z-index: 10;
+    padding-top: 2rem !important; padding-bottom: 3rem !important;
+    max-width: 1100px !important; position: relative; z-index: 10;
 }
 html, body, [class*="css"] { color: #e2e8f0 !important; }
 
 /* Hide Streamlit elements */
 header[data-testid="stHeader"], #MainMenu, footer, [data-testid="stStatusWidget"] { display: none !important; }
+[data-testid="stFileUploadDropzone"] small { display: none !important; } /* Hide 200MB text */
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .title-main {
     text-align: center; font-size: 2.5rem; font-weight: 800;
     background: -webkit-linear-gradient(45deg, #6366f1, #a855f7);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
 }
-.subtitle-main {
-    text-align: center; color: #94a3b8; font-size: 1rem; margin-bottom: 2rem;
-}
+.subtitle-main { text-align: center; color: #94a3b8; font-size: 1rem; margin-bottom: 2rem; }
 
 /* Glass Cards */
 .glass-card {
-    background: rgba(30, 41, 59, 0.4);
+    background: rgba(30, 41, 59, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 20px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px; padding: 24px; margin-bottom: 20px;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 .card-header {
@@ -217,14 +216,6 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
     background: #8b5cf6; border-radius: 2px;
 }
 
-/* Centered Tabs Wrapper */
-.centered-tabs-wrapper {
-    display: flex; justify-content: center; margin-bottom: 24px;
-}
-.centered-tabs-wrapper .glass-card {
-    padding: 8px 16px; margin-bottom: 0; border-radius: 12px;
-}
-
 /* Profile Sidebar */
 .profile-img-container {
     width: 120px; height: 120px; border-radius: 50%;
@@ -234,22 +225,22 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
     border: 2px solid rgba(255, 255, 255, 0.1);
 }
 .profile-img { width: 100%; height: 100%; object-fit: cover; }
-.profile-name { font-size: 1.5rem; font-weight: 700; text-align: center; color: #f8fafc; margin-bottom: 4px; }
+.profile-name { font-size: 1.5rem; font-weight: 700; text-align: center; color: #f8fafc; margin-bottom: 4px; word-break: break-word; }
 .profile-role { text-align: center; color: #8b5cf6; font-size: 0.9rem; font-weight: 600; margin-bottom: 16px; }
 .profile-nim {
-    display: block; text-align: center; background: rgba(30, 41, 59, 0.8);
+    display: inline-block; text-align: center; background: rgba(30, 41, 59, 0.8);
     border: 1px solid rgba(255,255,255,0.05); border-radius: 20px;
     padding: 6px 12px; font-size: 0.8rem; color: #94a3b8;
-    width: fit-content; margin: 0 auto 24px;
+    margin: 0 auto 24px;
 }
 .contact-item {
     display: flex; align-items: center; gap: 12px;
     margin-bottom: 12px; font-size: 0.9rem; color: #94a3b8;
-    text-decoration: none !important;
+    text-decoration: none !important; word-break: break-word;
 }
 .contact-item:hover { color: #e2e8f0; }
 .contact-icon {
-    width: 24px; height: 24px; background: rgba(139, 92, 246, 0.15);
+    min-width: 24px; height: 24px; background: rgba(139, 92, 246, 0.15);
     border-radius: 6px; display: flex; align-items: center; justify-content: center;
     color: #a78bfa; font-size: 0.8rem;
 }
@@ -282,8 +273,18 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link:hover { background: rgba(139, 92, 246, 0.2); }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
 
-/* Tabs Override */
-div[data-testid="stTabs"] > div > div { background: transparent !important; gap: 8px; justify-content: center; }
+/* Streamlit Tabs - Wrapped in Glass Card & Centered */
+div[data-baseweb="tab-list"] {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    padding: 8px !important;
+    backdrop-filter: blur(12px) !important;
+    width: fit-content !important;
+    margin: 0 auto 24px auto !important;
+    border-bottom: none !important;
+    gap: 8px;
+}
 div[data-testid="stTabs"] button {
     border-radius: 8px !important; font-weight: 600 !important; font-size: 0.9rem !important;
     color: #94a3b8 !important; background: transparent !important; border: 1px solid transparent !important;
@@ -313,33 +314,10 @@ div[data-testid="stForm"] button {
     border-radius: 8px !important; font-weight: 600 !important;
 }
 
-/* Custom CRUD Row styling */
-.crud-row {
-    display: flex; gap: 10px; align-items: center; margin-bottom: 8px;
-}
-.crud-input {
-    flex: 1; background: #0f172a !important; color: #f8fafc !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 8px !important;
-    padding: 10px 14px !important; font-size: 0.9rem !important;
-}
-.delete-btn button {
-    background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important; border-radius: 8px !important;
-    padding: 8px 12px !important;
-}
-.delete-btn button:hover {
-    background: rgba(239, 68, 68, 0.3) !important;
-}
-.add-btn button {
-    background: transparent !important; color: #a78bfa !important;
-    border: 1px dashed rgba(139, 92, 246, 0.5) !important; border-radius: 8px !important;
-    width: 100%; margin-top: 8px;
-}
-
 /* Wave Background */
 .ecv-wave-bg {
     position: fixed !important; bottom: 0; left: 0;
-    width: 100vw; height: 50vh; z-index: -1 !important; pointer-events: none;
+    width: 100vw; height: 50vh; z-index: 0 !important; pointer-events: none;
 }
 </style>
 """
@@ -369,17 +347,11 @@ def render_public_view(users: list):
     st.markdown('<h1 class="title-main">E-CV Kelompok</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle-main">Silakan pilih tab di bawah untuk melihat profil dan mengunduh berkas.</p>', unsafe_allow_html=True)
 
-    # Centered Tabs in Glass Card
-    _, col_tabs, _ = st.columns([1, 2, 1])
-    with col_tabs:
-        with st.container():
-            st.markdown('<div class="centered-tabs-wrapper"><div class="glass-card" style="width: 100%; padding: 8px;">', unsafe_allow_html=True)
-            tabs = st.tabs([u["name"] for u in users])
-            st.markdown('</div></div>', unsafe_allow_html=True)
+    tabs = st.tabs([u["name"] for u in users])
 
     for tab, u in zip(tabs, users):
         with tab:
-            col_left, col_right = st.columns([1, 2.2], gap="large")
+            col_left, col_right = st.columns([1.2, 2], gap="large")
 
             with col_left:
                 if u.get("profilePicture"):
@@ -477,11 +449,7 @@ def render_login_page(data: dict):
             st.query_params.clear()
             st.rerun()
 
-        # Centered Login Tabs in Glass Card
-        with st.container():
-            st.markdown('<div class="centered-tabs-wrapper"><div class="glass-card" style="width: 100%; padding: 8px;">', unsafe_allow_html=True)
-            tab1, tab2 = st.tabs(["Login Pengguna", "Login Master"])
-            st.markdown('</div></div>', unsafe_allow_html=True)
+        tab1, tab2 = st.tabs(["Login Pengguna", "Login Master"])
         
         with tab1:
             with st.form("login_user"):
@@ -557,11 +525,7 @@ def render_admin_panel(data: dict):
         st.success(st.session_state.flash)
         st.session_state.flash = None
 
-    # Centered Admin Tabs in Glass Card
-    with st.container():
-        st.markdown('<div class="centered-tabs-wrapper"><div class="glass-card" style="width: 100%; padding: 8px;">', unsafe_allow_html=True)
-        tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
-        st.markdown('</div></div>', unsafe_allow_html=True)
+    tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
 
     with tab_edit:
         render_edit_data_tab(target_user, data)
@@ -578,14 +542,13 @@ def render_edit_data_tab(u: dict, data: dict):
     version = st.session_state.save_version
     key_base = f"{u['id']}_{version}"
 
-    # Initialize lists in session state
+    # Initialize lists in session state for the form
     if f"edu_list_{u['id']}" not in st.session_state:
         st.session_state[f"edu_list_{u['id']}"] = list(u.get("education") or [])
     if f"exp_list_{u['id']}" not in st.session_state:
         st.session_state[f"exp_list_{u['id']}"] = list(u.get("experience") or [])
-
-    edu_list = st.session_state[f"edu_list_{u['id']}"]
-    exp_list = st.session_state[f"exp_list_{u['id']}"]
+    if f"proj_list_{u['id']}" not in st.session_state:
+        st.session_state[f"proj_list_{u['id']}"] = list(u.get("otherProjects") or [])
 
     with st.form(f"edit_form_{key_base}"):
         # Foto Profile
@@ -633,48 +596,43 @@ def render_edit_data_tab(u: dict, data: dict):
 
         # Custom CRUD for Pendidikan
         st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Pendidikan</div>', unsafe_allow_html=True)
+        edu_list = st.session_state[f"edu_list_{u['id']}"]
         for i, edu in enumerate(edu_list):
             cols = st.columns([3, 3, 2, 1])
-            edu["degree"] = cols[0].text_input("Gelar", value=edu.get("degree", ""), key=f"edu_deg_{i}", label_visibility="collapsed")
-            edu["institution"] = cols[1].text_input("Institusi", value=edu.get("institution", ""), key=f"edu_inst_{i}", label_visibility="collapsed")
-            edu["year"] = cols[2].text_input("Tahun", value=edu.get("year", ""), key=f"edu_year_{i}", label_visibility="collapsed")
+            edu["degree"] = cols[0].text_input(f"Gelar_{i}", value=edu.get("degree", ""), label_visibility="collapsed", placeholder="Gelar / Jenjang", key=f"edu_deg_{i}")
+            edu["institution"] = cols[1].text_input(f"Institusi_{i}", value=edu.get("institution", ""), label_visibility="collapsed", placeholder="Institusi", key=f"edu_inst_{i}")
+            edu["year"] = cols[2].text_input(f"Tahun_{i}", value=edu.get("year", ""), label_visibility="collapsed", placeholder="Tahun", key=f"edu_year_{i}")
             with cols[3]:
-                st.markdown('<div class="delete-btn">', unsafe_allow_html=True)
                 if st.form_submit_button("✕", key=f"del_edu_{i}"):
                     edu_list.pop(i)
                     st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown('<div class="add-btn">', unsafe_allow_html=True)
         if st.form_submit_button("+ Tambah Pendidikan"):
             edu_list.append({"degree": "", "institution": "", "year": ""})
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
         st.divider()
 
         # Custom CRUD for Pengalaman
         st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Pengalaman</div>', unsafe_allow_html=True)
+        exp_list = st.session_state[f"exp_list_{u['id']}"]
         for i, exp in enumerate(exp_list):
             cols = st.columns([3, 3, 2, 1])
-            exp["role"] = cols[0].text_input("Peran", value=exp.get("role", ""), key=f"exp_role_{i}", label_visibility="collapsed")
-            exp["company"] = cols[1].text_input("Perusahaan", value=exp.get("company", ""), key=f"exp_comp_{i}", label_visibility="collapsed")
-            exp["year"] = cols[2].text_input("Tahun", value=exp.get("year", ""), key=f"exp_year_{i}", label_visibility="collapsed")
+            exp["role"] = cols[0].text_input(f"Peran_{i}", value=exp.get("role", ""), label_visibility="collapsed", placeholder="Peran / Posisi", key=f"exp_role_{i}")
+            exp["company"] = cols[1].text_input(f"Perusahaan_{i}", value=exp.get("company", ""), label_visibility="collapsed", placeholder="Perusahaan", key=f"exp_comp_{i}")
+            exp["year"] = cols[2].text_input(f"Tahun_{i}", value=exp.get("year", ""), label_visibility="collapsed", placeholder="Tahun", key=f"exp_year_{i}")
             with cols[3]:
-                st.markdown('<div class="delete-btn">', unsafe_allow_html=True)
                 if st.form_submit_button("✕", key=f"del_exp_{i}"):
                     exp_list.pop(i)
                     st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
             
+            # Description on a new row
             desc_cols = st.columns([9, 1])
-            exp["description"] = desc_cols[0].text_area("Deskripsi", value=exp.get("description", ""), key=f"exp_desc_{i}", label_visibility="collapsed", height=60)
+            exp["description"] = desc_cols[0].text_area(f"Deskripsi_{i}", value=exp.get("description", ""), label_visibility="collapsed", placeholder="Deskripsi", height=68, key=f"exp_desc_{i}")
         
-        st.markdown('<div class="add-btn">', unsafe_allow_html=True)
         if st.form_submit_button("+ Tambah Pengalaman"):
             exp_list.append({"role": "", "company": "", "year": "", "description": ""})
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
 
         st.divider()
 
@@ -687,11 +645,23 @@ def render_edit_data_tab(u: dict, data: dict):
         with c1: mp_name = st.text_input("LINK PROYEK UTAMA (NAMA)", value=mp.get("name", ""), key=f"mpname_{key_base}")
         with c2: mp_url = st.text_input("LINK PROYEK UTAMA (URL)", value=mp.get("url", ""), key=f"mpurl_{key_base}")
 
-        # Convert other projects to single text area (one per line)
-        other_proj_str = "\\n".join([p.get("url", "") for p in u.get("otherProjects", [])])
-        other_proj_input = st.text_area("PROYEK LAINNYA (SATU PER BARIS)", value=other_proj_str, key=f"proj_{key_base}")
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Proyek Lainnya</div>', unsafe_allow_html=True)
+        proj_list = st.session_state[f"proj_list_{u['id']}"]
+        for i, proj in enumerate(proj_list):
+            cols = st.columns([4, 5, 1])
+            proj["name"] = cols[0].text_input(f"Nama Proyek_{i}", value=proj.get("name", ""), label_visibility="collapsed", placeholder="Nama Proyek", key=f"proj_name_{i}")
+            proj["url"] = cols[1].text_input(f"URL_{i}", value=proj.get("url", ""), label_visibility="collapsed", placeholder="URL Proyek", key=f"proj_url_{i}")
+            with cols[2]:
+                if st.form_submit_button("✕", key=f"del_proj_{i}"):
+                    proj_list.pop(i)
+                    st.rerun()
+        
+        if st.form_submit_button("+ Tambah Proyek Lainnya"):
+            proj_list.append({"name": "", "url": ""})
+            st.rerun()
 
         # Save Button
+        st.divider()
         submitted = st.form_submit_button("Simpan Perubahan", type="primary", use_container_width=True)
 
     if submitted:
@@ -704,23 +674,22 @@ def render_edit_data_tab(u: dict, data: dict):
         u["location"] = location.strip()
         u["skills"] = [s.strip() for s in skills_text.split(",") if s.strip()]
         
-        # Save dynamic lists
         u["education"] = [e for e in edu_list if any(e.values())]
         u["experience"] = [e for e in exp_list if any(e.values())]
-        
+        u["otherProjects"] = [p for p in proj_list if any(p.values())]
         u["mainProject"] = {"name": mp_name.strip(), "url": mp_url.strip()}
         
-        # Parse other projects (format: "url" or "name | url")
-        new_other_projects = []
-        for line in other_proj_input.split("\\n"):
-            if line.strip():
-                new_other_projects.append({"name": "Lihat Proyek", "url": line.strip()})
-        u["otherProjects"] = new_other_projects
-        
         save_data(data)
+        
+        # Clear state to force reload from saved data
+        del st.session_state[f"edu_list_{u['id']}"]
+        del st.session_state[f"exp_list_{u['id']}"]
+        del st.session_state[f"proj_list_{u['id']}"]
+        
         st.session_state.save_version += 1
         st.session_state.flash = "✅ Data berhasil disimpan."
         st.rerun()
+
 
 def render_files_tab(u: dict, data: dict):
     st.markdown("### Unggah Berkas")
