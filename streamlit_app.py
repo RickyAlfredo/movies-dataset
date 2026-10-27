@@ -1,5 +1,5 @@
 """
-E-CV — Final Layout matching Node.js UI.
+E-CV — Final Polish + Anti-Inspect + Centered Tabs.
 """
 
 import hashlib
@@ -11,6 +11,7 @@ import time
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ════════════════════════════════════════════════════════════════════
 # 1. PAGE CONFIG
@@ -24,7 +25,44 @@ st.set_page_config(
 )
 
 # ════════════════════════════════════════════════════════════════════
-# 2. CLOUDINARY
+# 2. ANTI-INSPECT (Redirect to Rickroll)
+# ════════════════════════════════════════════════════════════════════
+components.html("""
+<script>
+    // 1. Detect if DevTools is opened via window size difference
+    setInterval(function() {
+        const widthThreshold = window.outerWidth - window.innerWidth > 160;
+        const heightThreshold = window.outerHeight - window.innerHeight > 160;
+        if (widthThreshold || heightThreshold) {
+            window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
+        }
+    }, 1000);
+
+    // 2. Detect if DevTools is opened via debugger timing
+    setInterval(function() {
+        var before = new Date();
+        debugger;
+        var after = new Date();
+        if (after - before > 100) {
+            window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
+        }
+    }, 1000);
+
+    // 3. Disable right click and common shortcuts
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F12' || 
+            (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
+            (e.ctrlKey && e.key === 'U')) {
+            e.preventDefault();
+            window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
+        }
+    });
+</script>
+""", height=0, width=0)
+
+# ════════════════════════════════════════════════════════════════════
+# 3. CLOUDINARY
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
 try:
@@ -69,7 +107,7 @@ def validate_upload(uploaded) -> tuple[bool, str]:
     return True, ""
 
 # ════════════════════════════════════════════════════════════════════
-# 3. HELPERS
+# 4. HELPERS
 # ════════════════════════════════════════════════════════════════════
 def sha256(s: str) -> str: return hashlib.sha256(s.encode("utf-8")).hexdigest()
 def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(c in "0123456789abcdef" for c in s)
@@ -77,7 +115,7 @@ def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
 def save_data(data: dict) -> None: DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 # ════════════════════════════════════════════════════════════════════
-# 4. SEED + PERSISTENCE
+# 5. SEED + PERSISTENCE
 # ════════════════════════════════════════════════════════════════════
 DATA_FILE = Path(__file__).parent / "data" / "users.json"
 DATA_FILE.parent.mkdir(exist_ok=True)
@@ -160,7 +198,7 @@ def load_and_migrate() -> dict:
     return data
 
 # ════════════════════════════════════════════════════════════════════
-# 5. SESSION STATE
+# 6. SESSION STATE
 # ════════════════════════════════════════════════════════════════════
 for key, default in [
     ("logged_in_as", None), ("is_master", False), ("save_version", 0),
@@ -170,7 +208,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ════════════════════════════════════════════════════════════════════
-# 6. THEME & CSS
+# 7. THEME & CSS
 # ════════════════════════════════════════════════════════════════════
 def build_css() -> str:
     return """
@@ -273,22 +311,27 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link:hover { background: rgba(139, 92, 246, 0.2); }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
 
-/* Streamlit Tabs - Wrapped in Glass Card & Centered */
+/* Streamlit Tabs - Wrapped in Glass Card, Centered & Spaced */
+div[data-testid="stTabs"] {
+    width: 100%;
+}
 div[data-baseweb="tab-list"] {
     background: rgba(30, 41, 59, 0.6) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 12px !important;
-    padding: 8px !important;
+    padding: 8px 16px !important;
     backdrop-filter: blur(12px) !important;
     width: fit-content !important;
     margin: 0 auto 24px auto !important;
     border-bottom: none !important;
-    gap: 8px;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 32px !important; /* Decent spacing between tabs */
 }
 div[data-testid="stTabs"] button {
-    border-radius: 8px !important; font-weight: 600 !important; font-size: 0.9rem !important;
+    border-radius: 8px !important; font-weight: 600 !important; font-size: 0.95rem !important;
     color: #94a3b8 !important; background: transparent !important; border: 1px solid transparent !important;
-    padding: 8px 24px !important; transition: all 0.2s !important;
+    padding: 10px 32px !important; transition: all 0.2s !important;
 }
 div[data-testid="stTabs"] button:hover { color: #e2e8f0 !important; }
 div[data-testid="stTabs"] button[aria-selected="true"] {
@@ -341,7 +384,7 @@ def build_wave() -> str:
 """
 
 # ════════════════════════════════════════════════════════════════════
-# 7. PUBLIC VIEW
+# 8. PUBLIC VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_public_view(users: list):
     st.markdown('<h1 class="title-main">E-CV Kelompok</h1>', unsafe_allow_html=True)
@@ -436,7 +479,7 @@ def render_public_view(users: list):
 
 
 # ════════════════════════════════════════════════════════════════════
-# 8. LOGIN VIEW
+# 9. LOGIN VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_login_page(data: dict):
     st.markdown('<h1 class="title-main">Panel Admin</h1>', unsafe_allow_html=True)
@@ -478,7 +521,7 @@ def render_login_page(data: dict):
                         st.error("❌ Sandi master salah.")
 
 # ════════════════════════════════════════════════════════════════════
-# 9. ADMIN PANEL
+# 10. ADMIN PANEL
 # ════════════════════════════════════════════════════════════════════
 def render_admin_panel(data: dict):
     st.markdown('<h1 class="title-main">Panel Admin</h1>', unsafe_allow_html=True)
@@ -754,12 +797,11 @@ def render_change_password_tab(u: dict, data: dict):
 
 def render_reset_password_tab(u: dict, data: dict):
     st.markdown(f"### Reset Sandi: {u['name']}")
+    st.caption("Sebagai Master Admin, Anda dapat mengganti sandi pengguna tanpa perlu sandi lama.")
     with st.form(f"reset_pwd_{u['id']}"):
         new1 = st.text_input("Sandi baru", type="password")
-        new2 = st.text_input("Konfirmasi sandi baru", type="password")
         if st.form_submit_button("Reset Sandi", type="primary"):
             if len(new1) < 6: st.error("❌ Minimal 6 karakter.")
-            elif new1 != new2: st.error("❌ Konfirmasi tidak cocok.")
             else:
                 u["password"] = sha256(new1)
                 save_data(data)
@@ -767,7 +809,7 @@ def render_reset_password_tab(u: dict, data: dict):
                 st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
-# 10. ROUTING
+# 11. ROUTING
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
