@@ -1,5 +1,5 @@
 """
-E-CV — Final Polish + Anti-Inspect + Centered Tabs.
+E-CV — Final Layout & Custom CRUD matching Node.js UI.
 """
 
 import hashlib
@@ -311,32 +311,49 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link:hover { background: rgba(139, 92, 246, 0.2); }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
 
-/* Streamlit Tabs - Wrapped in Glass Card, Centered & Spaced */
+/* Streamlit Tabs - Force Centering and Glass Card */
 div[data-testid="stTabs"] {
+    width: 100%;
+}
+div[data-testid="stTabs"] > div > div:first-child {
+    display: flex;
+    justify-content: center;
     width: 100%;
 }
 div[data-baseweb="tab-list"] {
     background: rgba(30, 41, 59, 0.6) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 12px !important;
-    padding: 8px 16px !important;
+    padding: 6px !important;
     backdrop-filter: blur(12px) !important;
+    display: flex !important;
+    gap: 8px !important;
+    border-bottom: none !important;
     width: fit-content !important;
     margin: 0 auto 24px auto !important;
-    border-bottom: none !important;
-    display: flex !important;
-    justify-content: center !important;
-    gap: 32px !important; /* Decent spacing between tabs */
 }
-div[data-testid="stTabs"] button {
-    border-radius: 8px !important; font-weight: 600 !important; font-size: 0.95rem !important;
-    color: #94a3b8 !important; background: transparent !important; border: 1px solid transparent !important;
-    padding: 10px 32px !important; transition: all 0.2s !important;
+div[data-baseweb="tab-highlight"] {
+    background: transparent !important;
 }
-div[data-testid="stTabs"] button:hover { color: #e2e8f0 !important; }
-div[data-testid="stTabs"] button[aria-selected="true"] {
+div[data-baseweb="tab-border"] {
+    display: none !important;
+}
+div[data-testid="stTabs"] button[role="tab"] {
+    color: #94a3b8 !important;
+    font-weight: 600 !important;
+    padding: 8px 24px !important;
+    border-radius: 8px !important;
+    border: none !important;
+    background: transparent !important;
+    transition: all 0.2s !important;
+}
+div[data-testid="stTabs"] button[role="tab"]:hover {
+    color: #e2e8f0 !important;
+}
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-    color: #ffffff !important; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
 }
 
 /* Forms */
@@ -348,13 +365,54 @@ div[data-testid="stForm"] {
     background: #0f172a !important; color: #f8fafc !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 8px !important;
 }
-div[data-testid="stForm"] button {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-    color: white !important; border: none !important; border-radius: 8px !important;
-    font-weight: 600 !important; padding: 8px 24px !important;
-}
+
+/* All Buttons */
 .stButton > button {
-    border-radius: 8px !important; font-weight: 600 !important;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 8px 24px !important;
+    transition: all 0.2s !important;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2) !important;
+}
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* Link Buttons */
+.stLinkButton > a {
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: #f8fafc !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 8px 24px !important;
+    text-decoration: none !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.stLinkButton > a:hover {
+    background: rgba(30, 41, 59, 1) !important;
+}
+
+/* File Uploader */
+[data-testid="stFileUploadDropzone"] {
+    background-color: rgba(30, 41, 59, 0.4) !important;
+    border: 1px dashed rgba(139, 92, 246, 0.5) !important;
+    border-radius: 12px !important;
+}
+[data-testid="stFileUploadDropzone"]:hover {
+    border-color: #8b5cf6 !important;
+    background-color: rgba(30, 41, 59, 0.6) !important;
+}
+[data-testid="stFileUploadDropzone"] button {
+    background: rgba(139, 92, 246, 0.2) !important;
+    color: #c4b5fd !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
 }
 
 /* Wave Background */
