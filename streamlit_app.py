@@ -262,7 +262,6 @@ def load_and_migrate() -> dict:
         u.setdefault("files", [])
         u.setdefault("role", "")
         u.setdefault("location", "")
-        # Clean up old project fields if they exist
         if "mainProject" in u: del u["mainProject"]; changed = True
         if "otherProjects" in u: del u["otherProjects"]; changed = True
         
@@ -737,15 +736,16 @@ def render_admin_panel(data: dict):
 
     # Tabs
     if is_master:
-        tab_edit, tab_proj, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Proyek", "Kelola Berkas", "Ubah Sandi"])
+        # CHANGED: Moved "Kelola Proyek" to the end
+        tab_edit, tab_files, tab_pwd, tab_proj = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi", "Kelola Proyek"])
         with tab_edit:
             render_edit_data_tab(target_user, data)
-        with tab_proj:
-            render_team_projects_tab(data)
         with tab_files:
             render_files_tab(target_user, data)
         with tab_pwd:
             render_reset_password_tab(target_user, data)
+        with tab_proj:
+            render_team_projects_tab(data)
     else:
         tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
         with tab_edit:
