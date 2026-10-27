@@ -1,7 +1,3 @@
-"""
-E-CV — Final Layout & Custom CRUD matching Node.js UI.
-"""
-
 import hashlib
 import html as html_lib
 import json
@@ -25,30 +21,19 @@ st.set_page_config(
 )
 
 # ════════════════════════════════════════════════════════════════════
-# 2. ANTI-INSPECT (Redirect to Rickroll)
+# 2. ANTI-INSPECT & UI TWEAKS
 # ════════════════════════════════════════════════════════════════════
 components.html("""
 <script>
-    // 1. Detect if DevTools is opened via window size difference
+    // ── 1. ANTI-INSPECT (Rickroll) ──
     setInterval(function() {
-        const widthThreshold = window.outerWidth - window.innerWidth > 160;
-        const heightThreshold = window.outerHeight - window.innerHeight > 160;
+        const widthThreshold = window.parent.outerWidth - window.parent.innerWidth > 160;
+        const heightThreshold = window.parent.outerHeight - window.parent.innerHeight > 160;
         if (widthThreshold || heightThreshold) {
             window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
         }
     }, 1000);
 
-    // 2. Detect if DevTools is opened via debugger timing
-    setInterval(function() {
-        var before = new Date();
-        debugger;
-        var after = new Date();
-        if (after - before > 100) {
-            window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
-        }
-    }, 1000);
-
-    // 3. Disable right click and common shortcuts
     document.addEventListener('contextmenu', event => event.preventDefault());
     document.addEventListener('keydown', function(e) {
         if (e.key === 'F12' || 
@@ -58,6 +43,45 @@ components.html("""
             window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
         }
     });
+
+    // ── 2. QOL: GREEN BUTTON & TAB PERSISTENCE ──
+    const doc = window.parent.document;
+    
+    function applyUI() {
+        // Green Save Button
+        const buttons = doc.querySelectorAll('button');
+        buttons.forEach(btn => {
+            if (btn.innerText.includes("Simpan Perubahan")) {
+                btn.style.background = "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)";
+                btn.style.border = "none";
+                btn.style.boxShadow = "0 4px 12px rgba(34, 197, 94, 0.4)";
+            }
+        });
+
+        // Tab Persistence (Admin Panel only)
+        const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
+        let isAdmin = false;
+        if (tabs.length === 3 && tabs[0].innerText.includes("Edit Data")) {
+            isAdmin = true;
+        }
+        
+        if (isAdmin) {
+            tabs.forEach((tab, index) => {
+                if (!tab.dataset.listenerAdded) {
+                    tab.addEventListener('click', () => {
+                        window.parent.localStorage.setItem('ecv_admin_tab', index);
+                    });
+                    tab.dataset.listenerAdded = "true";
+                }
+            });
+            const savedTab = window.parent.localStorage.getItem('ecv_admin_tab');
+            if (savedTab !== null && tabs[savedTab] && tabs[savedTab].getAttribute('aria-selected') !== 'true') {
+                tabs[savedTab].click();
+            }
+        }
+    }
+
+    setInterval(applyUI, 500);
 </script>
 """, height=0, width=0)
 
@@ -202,10 +226,15 @@ def load_and_migrate() -> dict:
 # ════════════════════════════════════════════════════════════════════
 for key, default in [
     ("logged_in_as", None), ("is_master", False), ("save_version", 0),
-    ("flash", None), ("file_upload_version", 0), ("avatar_upload_version", 0)
+    ("flash", None), ("file_upload_version", 0), ("avatar_upload_version", 0),
+    ("scroll_to_top", False)
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
+
+if st.session_state.scroll_to_top:
+    components.html("<script>window.parent.scrollTo({ top: 0, behavior: 'smooth' });</script>", height=0)
+    st.session_state.scroll_to_top = False
 
 # ════════════════════════════════════════════════════════════════════
 # 7. THEME & CSS
@@ -312,14 +341,8 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
 
 /* Streamlit Tabs - Force Centering and Glass Card */
-div[data-testid="stTabs"] {
-    width: 100%;
-}
-div[data-testid="stTabs"] > div > div:first-child {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-}
+div[data-testid="stTabs"] { width: 100%; }
+div[data-testid="stTabs"] > div > div:first-child { display: flex; justify-content: center; width: 100%; }
 div[data-baseweb="tab-list"] {
     background: rgba(30, 41, 59, 0.6) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -332,24 +355,15 @@ div[data-baseweb="tab-list"] {
     width: fit-content !important;
     margin: 0 auto 24px auto !important;
 }
-div[data-baseweb="tab-highlight"] {
-    background: transparent !important;
-}
-div[data-baseweb="tab-border"] {
-    display: none !important;
-}
+div[data-baseweb="tab-highlight"] { background: transparent !important; }
+div[data-baseweb="tab-border"] { display: none !important; }
 div[data-testid="stTabs"] button[role="tab"] {
-    color: #94a3b8 !important;
-    font-weight: 600 !important;
-    padding: 8px 24px !important;
-    border-radius: 8px !important;
-    border: none !important;
-    background: transparent !important;
+    color: #94a3b8 !important; font-weight: 600 !important;
+    padding: 8px 24px !important; border-radius: 8px !important;
+    border: none !important; background: transparent !important;
     transition: all 0.2s !important;
 }
-div[data-testid="stTabs"] button[role="tab"]:hover {
-    color: #e2e8f0 !important;
-}
+div[data-testid="stTabs"] button[role="tab"]:hover { color: #e2e8f0 !important; }
 div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
     color: #ffffff !important;
@@ -369,35 +383,22 @@ div[data-testid="stForm"] {
 /* All Buttons */
 .stButton > button {
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    padding: 8px 24px !important;
-    transition: all 0.2s !important;
+    color: white !important; border: none !important;
+    border-radius: 8px !important; font-weight: 600 !important;
+    padding: 8px 24px !important; transition: all 0.2s !important;
     box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2) !important;
 }
-.stButton > button:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
-}
+.stButton > button:hover { transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important; }
 
 /* Link Buttons */
 .stLinkButton > a {
-    background: rgba(30, 41, 59, 0.8) !important;
-    color: #f8fafc !important;
+    background: rgba(30, 41, 59, 0.8) !important; color: #f8fafc !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    padding: 8px 24px !important;
-    text-decoration: none !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: 8px !important; font-weight: 600 !important;
+    padding: 8px 24px !important; text-decoration: none !important;
+    display: inline-flex; align-items: center; justify-content: center;
 }
-.stLinkButton > a:hover {
-    background: rgba(30, 41, 59, 1) !important;
-}
+.stLinkButton > a:hover { background: rgba(30, 41, 59, 1) !important; }
 
 /* File Uploader */
 [data-testid="stFileUploadDropzone"] {
@@ -789,6 +790,7 @@ def render_edit_data_tab(u: dict, data: dict):
         
         st.session_state.save_version += 1
         st.session_state.flash = "✅ Data berhasil disimpan."
+        st.session_state.scroll_to_top = True
         st.rerun()
 
 
@@ -797,13 +799,23 @@ def render_files_tab(u: dict, data: dict):
     st.caption("Hanya `.pdf`, `.png`, `.jpeg` · maksimal 5 MB.")
 
     fu_key = f"file_uploader_{u['id']}_{st.session_state.file_upload_version}"
-    new_file = st.file_uploader("Pilih berkas", type=["pdf", "png", "jpeg", "jpg"], key=fu_key, disabled=not CLOUDINARY_READY)
+    new_files = st.file_uploader(
+        "Pilih berkas", 
+        type=["pdf", "png", "jpeg", "jpg"], 
+        accept_multiple_files=True, 
+        key=fu_key, 
+        disabled=not CLOUDINARY_READY
+    )
 
-    if new_file is not None:
-        ok, msg = validate_upload(new_file)
-        if not ok: st.error(f"❌ {msg}")
-        else:
-            if st.button("⬆️ Unggah Berkas", type="primary"):
+    if new_files:
+        if st.button("⬆️ Unggah Semua Berkas", type="primary"):
+            success_count = 0
+            for new_file in new_files:
+                ok, msg = validate_upload(new_file)
+                if not ok: 
+                    st.error(f"❌ {new_file.name}: {msg}")
+                    continue
+                
                 resource_type = "raw" if new_file.type == "application/pdf" else "image"
                 result = upload_bytes(new_file.getvalue(), new_file.name, resource_type)
                 if result:
@@ -812,10 +824,13 @@ def render_files_tab(u: dict, data: dict):
                         "public_id": result["public_id"],
                         "type": "pdf" if new_file.type == "application/pdf" else "image",
                     })
-                    save_data(data)
-                    st.session_state.file_upload_version += 1
-                    st.session_state.flash = f"✅ Berkas '{new_file.name}' berhasil diunggah."
-                    st.rerun()
+                    success_count += 1
+            
+            if success_count > 0:
+                save_data(data)
+                st.session_state.file_upload_version += 1
+                st.session_state.flash = f"✅ {success_count} berkas berhasil diunggah."
+                st.rerun()
 
     st.divider()
     st.markdown(f"#### Berkas Terdaftar ({len(u.get('files') or [])})")
