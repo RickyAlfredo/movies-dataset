@@ -1,11 +1,5 @@
 """
-E-CV — Final Version: Hardcoded Dark Mode using exact repo colors.
-Access admin via URL param:   ?admin=1
-Default credentials:
-    Master:  master / capstone12
-    User 1:  221001001 / password123
-    User 2:  221001002 / password123
-    User 3:  221001003 / password123
+E-CV — Final Layout matching Node.js UI.
 """
 
 import hashlib
@@ -22,7 +16,7 @@ import streamlit as st
 # 1. PAGE CONFIG
 # ════════════════════════════════════════════════════════════════════
 st.set_page_config(
-    page_title="E-CV",
+    page_title="E-CV Kelompok",
     page_icon="📄",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -36,7 +30,6 @@ CLOUDINARY_READY = False
 try:
     import cloudinary
     import cloudinary.uploader
-
     cloudinary.config(
         cloud_name=st.secrets["cloudinary"]["cloud_name"],
         api_key=st.secrets["cloudinary"]["api_key"],
@@ -51,37 +44,26 @@ MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
 def upload_bytes(file_bytes: bytes, filename: str, resource_type: str):
-    if not CLOUDINARY_READY:
-        st.error("❌ Cloudinary belum dikonfigurasi.")
-        return None
+    if not CLOUDINARY_READY: return None
     base = filename.rsplit(".", 1)[0].replace(" ", "_")[:60]
     unique_id = f"ecv_{int(time.time())}_{base}"
     try:
         result = cloudinary.uploader.upload(
-            BytesIO(file_bytes),
-            resource_type=resource_type,
-            folder="ecv",
-            public_id=unique_id,
+            BytesIO(file_bytes), resource_type=resource_type, folder="ecv", public_id=unique_id
         )
         return {"url": result["secure_url"], "public_id": result["public_id"]}
-    except Exception as e:
-        st.error(f"❌ Gagal mengunggah: {e}")
+    except Exception:
         return None
 
 def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
-    if not CLOUDINARY_READY or not public_id:
-        return
-    try:
-        cloudinary.uploader.destroy(public_id, resource_type=resource_type)
-    except Exception:
-        pass
+    if not CLOUDINARY_READY or not public_id: return
+    try: cloudinary.uploader.destroy(public_id, resource_type=resource_type)
+    except Exception: pass
 
 def validate_upload(uploaded) -> tuple[bool, str]:
-    if uploaded is None:
-        return False, "Tidak ada berkas."
+    if uploaded is None: return False, "Tidak ada berkas."
     if uploaded.size > MAX_FILE_BYTES:
-        mb = uploaded.size / (1024 * 1024)
-        return False, f"Ukuran berkas {mb:.1f} MB melebihi batas 5 MB."
+        return False, f"Ukuran berkas {uploaded.size / (1024 * 1024):.1f} MB melebihi batas 5 MB."
     if uploaded.type not in ALLOWED_MIMES:
         return False, "Hanya berkas .pdf, .png, atau .jpeg yang diizinkan."
     return True, ""
@@ -89,29 +71,20 @@ def validate_upload(uploaded) -> tuple[bool, str]:
 # ════════════════════════════════════════════════════════════════════
 # 3. HELPERS
 # ════════════════════════════════════════════════════════════════════
-def sha256(s: str) -> str:
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
-
-def is_hash(s: str) -> bool:
-    return isinstance(s, str) and len(s) == 64 and all(c in "0123456789abcdef" for c in s)
-
-def esc(s) -> str:
-    return html_lib.escape(str(s) if s is not None else "")
-
-def save_data(data: dict) -> None:
-    DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+def sha256(s: str) -> str: return hashlib.sha256(s.encode("utf-8")).hexdigest()
+def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(c in "0123456789abcdef" for c in s)
+def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
+def save_data(data: dict) -> None: DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 def df_to_records(df, columns: list) -> list:
-    if df is None or df.empty:
-        return []
+    if df is None or df.empty: return []
     records = []
     for _, row in df.iterrows():
         rec = {}
         for col in columns:
             v = row.get(col)
             rec[col] = "" if pd.isna(v) else str(v).strip()
-        if any(rec.values()):
-            records.append(rec)
+        if any(rec.values()): records.append(rec)
     return records
 
 # ════════════════════════════════════════════════════════════════════
@@ -124,65 +97,41 @@ SEED = {
     "masterPassword": "capstone12",
     "users": [
         {
-            "id": "user1", "name": "Ahmad Fauzi", "nim": "221001001",
-            "email": "ahmad.fauzi@example.com", "phone": "+62 812-3456-7890",
-            "bio": "Mahasiswa Teknik Informatika yang berfokus pada pengembangan web dan mobile.",
+            "id": "user1", "name": "Nama User 1", "role": "Frontend Developer", "nim": "220010001",
+            "email": "email@example.com", "phone": "08123456789", "location": "Jakarta",
+            "linkedin": "linkedin.com/in/user1", "github": "github.com/user1",
+            "bio": "Deskripsi profil singkat untuk User 1.",
             "password": "password123", "profilePicture": "",
             "education": [
                 {"degree": "S1 Teknik Informatika", "institution": "Universitas Indonesia", "year": "2022 - Sekarang"},
-                {"degree": "SMA IPA", "institution": "SMA Negeri 1 Jakarta", "year": "2019 - 2022"},
             ],
             "experience": [
-                {"role": "Web Developer Intern", "company": "PT Teknologi Maju", "year": "2024",
-                 "description": "Membangun dashboard admin menggunakan React dan Node.js."},
-                {"role": "Freelance Web Developer", "company": "Mandiri", "year": "2023 - Sekarang",
-                 "description": "Mengerjakan berbagai proyek landing page dan e-commerce untuk UMKM."},
+                {"role": "Web Developer", "company": "PT Teknologi", "year": "2024", "description": "Membangun UI."},
             ],
-            "skills": ["JavaScript", "Python", "React", "Node.js", "MySQL", "Git"],
-            "mainProject": {"name": "Sistem Informasi Akademik", "url": "https://github.com/ahmad/siakad"},
-            "otherProjects": [
-                {"name": "Aplikasi Kasir Sederhana", "url": "https://github.com/ahmad/kasir"},
-                {"name": "Portfolio Website", "url": "https://github.com/ahmad/portfolio"},
-            ],
+            "skills": ["HTML", "CSS", "JavaScript", "React"],
+            "mainProject": {"name": "Portfolio Website", "url": "https://github.com/user1"},
+            "otherProjects": [{"name": "Aplikasi Kasir", "url": "https://github.com/user1"}],
             "files": [],
         },
         {
-            "id": "user2", "name": "Siti Rahma", "nim": "221001002",
-            "email": "siti.rahma@example.com", "phone": "+62 813-9876-5432",
-            "bio": "Mahasiswi Sistem Informasi yang tertarik pada analisis data dan UI/UX design.",
+            "id": "user2", "name": "Nama User 2", "role": "Backend Developer", "nim": "220010002",
+            "email": "user2@example.com", "phone": "08123456780", "location": "Bandung",
+            "linkedin": "", "github": "",
+            "bio": "Deskripsi profil singkat untuk User 2.",
             "password": "password123", "profilePicture": "",
-            "education": [
-                {"degree": "S1 Sistem Informasi", "institution": "Institut Teknologi Bandung", "year": "2022 - Sekarang"},
-            ],
-            "experience": [
-                {"role": "UI/UX Design Intern", "company": "Startup Kreatif", "year": "2024",
-                 "description": "Merancang user flow dan wireframe untuk aplikasi mobile."},
-            ],
-            "skills": ["Figma", "UI Design", "UX Research", "SQL", "Tableau", "Python"],
-            "mainProject": {"name": "Dashboard Analitik Penjualan", "url": "https://github.com/siti/dashboard"},
-            "otherProjects": [
-                {"name": "Redesign Aplikasi OVO", "url": "https://github.com/siti/ovo-redesign"},
-            ],
-            "files": [],
+            "education": [{"degree": "S1 Sistem Informasi", "institution": "ITB", "year": "2021 - Sekarang"}],
+            "experience": [], "skills": ["Python", "Django", "PostgreSQL"], "mainProject": {"name": "", "url": ""},
+            "otherProjects": [], "files": [],
         },
         {
-            "id": "user3", "name": "Budi Santoso", "nim": "221001003",
-            "email": "budi.santoso@example.com", "phone": "+62 857-1111-2222",
-            "bio": "Mahasiswa Teknik Komputer yang berfokus pada embedded systems dan IoT.",
+            "id": "user3", "name": "Nama User 3", "role": "UI/UX Designer", "nim": "220010003",
+            "email": "user3@example.com", "phone": "08123456781", "location": "Surabaya",
+            "linkedin": "", "github": "",
+            "bio": "Deskripsi profil singkat untuk User 3.",
             "password": "password123", "profilePicture": "",
-            "education": [
-                {"degree": "S1 Teknik Komputer", "institution": "Universitas Gadjah Mada", "year": "2021 - Sekarang"},
-            ],
-            "experience": [
-                {"role": "IoT Engineer Intern", "company": "PT Smart Device", "year": "2024",
-                 "description": "Mengembangkan firmware perangkat IoT berbasis ESP32."},
-            ],
-            "skills": ["C++", "Arduino", "Raspberry Pi", "Python", "MQTT", "Linux"],
-            "mainProject": {"name": "Sistem Monitoring Suhu IoT", "url": "https://github.com/budi/iot-monitor"},
-            "otherProjects": [
-                {"name": "Smart Home Controller", "url": "https://github.com/budi/smarthome"},
-            ],
-            "files": [],
+            "education": [{"degree": "S1 Desain", "institution": "ITS", "year": "2020 - Sekarang"}],
+            "experience": [], "skills": ["Figma", "Adobe XD"], "mainProject": {"name": "", "url": ""},
+            "otherProjects": [], "files": [],
         },
     ],
 }
@@ -207,6 +156,10 @@ def load_and_migrate() -> dict:
             changed = True
         u.setdefault("profilePicture", "")
         u.setdefault("files", [])
+        u.setdefault("role", "")
+        u.setdefault("location", "")
+        u.setdefault("linkedin", "")
+        u.setdefault("github", "")
     if changed:
         DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return data
@@ -215,455 +168,383 @@ def load_and_migrate() -> dict:
 # 5. SESSION STATE
 # ════════════════════════════════════════════════════════════════════
 for key, default in [
-    ("logged_in_as", None),
-    ("is_master", False),
-    ("save_version", 0),
-    ("flash", None),
-    ("file_upload_version", 0),
-    ("avatar_upload_version", 0),
+    ("logged_in_as", None), ("is_master", False), ("save_version", 0),
+    ("flash", None), ("file_upload_version", 0), ("avatar_upload_version", 0)
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 # ════════════════════════════════════════════════════════════════════
-# 6. DARK THEME PALETTE (Exact copy from repo css)
+# 6. THEME & CSS
 # ════════════════════════════════════════════════════════════════════
-DARK = {
-    "bg":            "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-    "surface":       "rgba(30, 41, 59, 0.7)",
-    "surface_hover": "rgba(51, 65, 85, 0.8)",
-    "border":        "rgba(71, 85, 105, 0.6)",
-    "text_primary":  "#f8fafc",
-    "text_secondary":"#94a3b8",
-    "text_muted":    "#cbd5e1",
-    "input_bg":      "rgba(15, 23, 42, 0.6)",
-    "input_border":  "rgba(71, 85, 105, 0.6)",
-    "shadow_glow":   "0 8px 32px rgba(0, 0, 0, 0.4)",
-    "shadow_card":   "0 4px 16px rgba(0, 0, 0, 0.2)",
-    "btn_sec_bg":    "rgba(30, 41, 59, 0.6)",
-    "link":          "#a78bfa",
-    "link_hover":    "#c4b5fd",
-    "gradient_tab":  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "wave_1":        "rgba(56, 189, 248, 0.15)",
-    "wave_2":        "rgba(56, 189, 248, 0.08)",
-    "wave_3":        "rgba(56, 189, 248, 0.03)",
-}
-
 def build_css() -> str:
-    p = DARK
-    
-    # Always hide the Streamlit header, manage app button, etc.
-    hide_ui_css = """
-    header[data-testid="stHeader"], #MainMenu, footer, [data-testid="stStatusWidget"] {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    """
-
-    return f"""
+    return """
 <style>
-{hide_ui_css}
-.stApp {{
-    background: {p['bg']} !important;
+/* Main Background and Layout */
+.stApp {
+    background: #0f172a !important;
     background-attachment: fixed !important;
-}}
-.block-container {{
+    color: #e2e8f0 !important;
+    font-family: 'Inter', sans-serif !important;
+}
+.block-container {
     padding-top: 2rem !important;
     padding-bottom: 3rem !important;
     max-width: 1100px !important;
     position: relative;
-    z-index: 2;
-}}
-html, body, [class*="css"] {{
-    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-    color: {p['text_primary']} !important;
-}}
-.stApp, .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3,
-.stApp h4, .stApp h5, .stApp h6 {{
-    color: {p['text_primary']} !important;
-}}
+    z-index: 10;
+}
+html, body, [class*="css"] { color: #e2e8f0 !important; }
 
-.logo {{
-    font-size: 26px; font-weight: 800; margin-bottom: 4px;
-    color: {p['text_primary']};
-}}
-.logo span {{ color: #667eea; }}
+/* Hide Streamlit elements */
+header[data-testid="stHeader"], #MainMenu, footer, [data-testid="stStatusWidget"] { display: none !important; }
 
-.profile-card {{
-    background: {p['surface']};
-    border: 1px solid {p['border']};
-    border-radius: 20px;
-    padding: 32px 24px;
-    text-align: center;
-    box-shadow: {p['shadow_glow']};
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    position: relative;
-    z-index: 2;
-}}
-.avatar, .avatar-img {{
-    width: 100px; height: 100px; border-radius: 50%;
-    margin: 0 auto 20px; display: block;
-    border: 4px solid {p['surface']};
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}}
-.avatar {{
-    background: {p['surface']}; color: {p['text_primary']};
-    display: flex; align-items: center; justify-content: center;
-    font-size: 38px; font-weight: 700;
-}}
-.avatar-img {{ object-fit: cover; }}
-.p-name {{ font-size: 1.5rem; font-weight: 700; color: {p['text_primary']}; margin: 0 0 4px; }}
-.p-role {{ color: #667eea; font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; }}
-.p-nim  {{ font-size: 0.85rem; color: {p['text_secondary']}; background: rgba(255,255,255,0.1); display: inline-block; padding: 4px 12px; border-radius: 999px; margin-bottom: 16px; }}
-.p-bio  {{ font-size: 0.95rem; color: {p['text_muted']}; line-height: 1.75; margin-bottom: 16px; text-align: left; }}
-.p-contact {{ display: block; font-size: 0.9rem; color: {p['text_secondary']}; margin: 5px 0; text-align: left; word-break: break-all; transition: color 0.2s ease; }}
-.p-contact:hover {{ color: {p['link_hover']}; }}
+/* Typography */
+h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
+.title-main {
+    text-align: center; font-size: 2.5rem; font-weight: 800;
+    background: -webkit-linear-gradient(45deg, #6366f1, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+.subtitle-main {
+    text-align: center; color: #94a3b8; font-size: 1rem; margin-bottom: 2rem;
+}
 
-.card {{
-    background: {p['surface']};
-    border: 1px solid {p['border']};
-    border-radius: 20px;
-    padding: 24px 28px;
+/* Cards (glassmorphism) */
+.glass-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px;
     margin-bottom: 20px;
-    box-shadow: {p['shadow_glow']};
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    position: relative;
-    z-index: 2;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}}
-.card:hover {{ transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.12); }}
-.card h3 {{
-    margin: 0 0 16px; font-size: 0.75rem; text-transform: uppercase;
-    letter-spacing: 0.1em; color: {p['text_secondary']}; font-weight: 700;
-}}
-.item {{ position: relative; padding-left: 20px; border-left: 2px solid rgba(102,126,234,0.3); margin-bottom: 16px; }}
-.item:last-child {{ margin-bottom: 0; }}
-.item::before {{
-    content: ''; position: absolute; left: -27px; top: 6px; width: 10px; height: 10px;
-    border-radius: 50%; background: {p['gradient_tab']};
-}}
-.item .t {{ font-weight: 700; font-size: 1rem; color: {p['text_primary']}; }}
-.item .s {{ color: {p['text_secondary']}; font-size: 0.9rem; margin-top: 2px; }}
-.item .d {{ color: {p['text_muted']}; font-size: 0.9rem; margin-top: 6px; }}
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+.card-header {
+    font-size: 0.85rem; font-weight: 700; color: #cbd5e1;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+.card-header::before {
+    content: ''; display: inline-block; width: 4px; height: 16px;
+    background: #8b5cf6; border-radius: 2px;
+}
 
-.chip {{
-    display: inline-block; padding: 6px 14px; margin: 3px;
-    border-radius: 999px; font-size: 0.85rem; font-weight: 600;
-    border: 1px solid {p['border']}; color: {p['text_primary']};
-}}
-.link-row {{
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 18px; margin-bottom: 10px;
-    border-radius: 10px;
-    background: {p['btn_sec_bg']};
-    border: 1px solid {p['border']};
-    color: {p['text_muted']} !important;
+/* Profile Sidebar */
+.profile-img-container {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: #86efac; display: flex; align-items: center; justify-content: center;
+    font-size: 3rem; font-weight: bold; color: #064e3b;
+    margin: 0 auto 20px; overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+.profile-img { width: 100%; height: 100%; object-fit: cover; }
+.profile-name { font-size: 1.5rem; font-weight: 700; text-align: center; color: #f8fafc; margin-bottom: 4px; }
+.profile-role { text-align: center; color: #8b5cf6; font-size: 0.9rem; font-weight: 600; margin-bottom: 16px; }
+.profile-nim {
+    display: block; text-align: center; background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255,255,255,0.05); border-radius: 20px;
+    padding: 6px 12px; font-size: 0.8rem; color: #94a3b8;
+    width: fit-content; margin: 0 auto 24px;
+}
+.contact-item {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px; font-size: 0.9rem; color: #94a3b8;
     text-decoration: none !important;
-    font-size: 0.92rem;
-    transition: all 0.2s;
-}}
-.link-row:hover {{ background: {p['surface_hover']}; }}
-.project-main {{
-    display: inline-block; color: {p['link']} !important;
-    text-decoration: none !important; font-weight: 600; padding: 8px 0;
-    border-bottom: 1px dashed {p['link']}; transition: all 0.2s; font-size: 1rem;
-}}
-.project-main:hover {{ color: {p['link_hover']} !important; border-bottom-color: {p['link_hover']}; }}
-.empty {{ font-size: 0.9rem; color: {p['text_secondary']}; font-style: italic; padding: 8px 0; }}
+}
+.contact-item:hover { color: #e2e8f0; }
+.contact-icon {
+    width: 24px; height: 24px; background: rgba(139, 92, 246, 0.15);
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    color: #a78bfa; font-size: 0.8rem;
+}
+
+/* Lists inside cards */
+.list-item { margin-bottom: 16px; position: relative; padding-left: 16px; border-left: 2px solid rgba(139, 92, 246, 0.3); }
+.list-item::before {
+    content: ''; position: absolute; left: -5px; top: 6px;
+    width: 8px; height: 8px; border-radius: 50%; background: #a78bfa;
+}
+.list-title { font-weight: 600; color: #f8fafc; font-size: 0.95rem; }
+.list-sub { color: #94a3b8; font-size: 0.85rem; margin-top: 2px; }
+.list-desc { color: #cbd5e1; font-size: 0.85rem; margin-top: 8px; line-height: 1.5; }
+
+/* Skills */
+.skill-chip {
+    display: inline-block; padding: 6px 12px; margin: 4px;
+    background: rgba(139, 92, 246, 0.15); border-radius: 8px;
+    font-size: 0.8rem; font-weight: 500; color: #c4b5fd;
+}
+
+/* Links */
+.btn-link {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: #a78bfa !important; text-decoration: none !important;
+    font-weight: 500; font-size: 0.9rem; margin-bottom: 8px;
+    padding: 8px 12px; border-radius: 8px; background: rgba(139, 92, 246, 0.1);
+    transition: background 0.2s;
+}
+.btn-link:hover { background: rgba(139, 92, 246, 0.2); }
+.btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
 
 /* Tabs */
-div[data-testid="stTabs"] button {{
+div[data-testid="stTabs"] { justify-content: center; }
+div[data-testid="stTabs"] > div > div { background: transparent !important; gap: 8px; }
+div[data-testid="stTabs"] button {
+    border-radius: 8px !important; font-weight: 600 !important; font-size: 0.9rem !important;
+    color: #94a3b8 !important; background: transparent !important; border: 1px solid transparent !important;
+    padding: 8px 24px !important; transition: all 0.2s !important;
+}
+div[data-testid="stTabs"] button:hover { color: #e2e8f0 !important; }
+div[data-testid="stTabs"] button[aria-selected="true"] {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: #ffffff !important; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* Forms */
+div[data-testid="stForm"] {
+    background: rgba(30, 41, 59, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important; padding: 24px !important; backdrop-filter: blur(10px);
+}
+.stTextInput input, .stTextArea textarea, div[data-baseweb="select"] > div {
+    background: #0f172a !important; color: #f8fafc !important; border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 8px !important;
-    font-weight: 600 !important;
-    font-size: 0.95rem !important;
-    color: {p['text_secondary']} !important;
-    background: transparent !important;
-}}
-div[data-testid="stTabs"] button[aria-selected="true"] {{
-    background: {p['gradient_tab']} !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 15px rgba(102,126,234,0.3) !important;
-    border: none !important;
-}}
-div[data-testid="stTabs"] {{
-    background: {p['surface']} !important;
-    border-radius: 14px !important;
-    border: 1px solid {p['border']} !important;
-    backdrop-filter: blur(12px);
-    padding: 6px !important;
-    box-shadow: {p['shadow_card']};
-    width: fit-content !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    margin-bottom: 32px !important;
-}}
+}
+div[data-testid="stForm"] button {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: white !important; border: none !important; border-radius: 8px !important;
+    font-weight: 600 !important; padding: 8px 24px !important;
+}
+.stButton > button {
+    border-radius: 8px !important; font-weight: 600 !important;
+}
 
-/* Form */
-div[data-testid="stForm"] {{
-    background: {p['surface']} !important;
-    border: 1px solid {p['border']} !important;
-    border-radius: 20px !important;
-    padding: 24px 28px !important;
-    backdrop-filter: blur(12px);
-    box-shadow: {p['shadow_glow']};
-    position: relative;
-    z-index: 2;
-}}
-
-/* Inputs */
-.stTextInput input, .stTextArea textarea, .stNumberInput input {{
-    background: {p['input_bg']} !important;
-    color: {p['text_primary']} !important;
-    border: 1px solid {p['input_border']} !important;
-}}
-div[data-baseweb="select"] > div {{
-    background: {p['input_bg']} !important;
-    color: {p['text_primary']} !important;
-    border-color: {p['input_border']} !important;
-}}
-
-/* Buttons */
-.stButton > button {{
-    background: {p['gradient_tab']} !important;
-    color: #fff !important;
-    border: none !important;
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    box-shadow: 0 4px 15px rgba(102,126,234,0.4) !important;
-    transition: all 0.2s !important;
-}}
-.stButton > button:hover {{
-    transform: translateY(-1px) !important;
-    box-shadow: 0 6px 20px rgba(102,126,234,0.6) !important;
-}}
-.stButton > button:active {{
-    transform: scale(0.97) !important;
-}}
-
-/* Wave */
-.ecv-wave-bg {{
-    position: fixed !important;
-    bottom: 0;
-    left: 0;
-    width: 100vw;
-    height: 40vh;
-    min-height: 250px;
-    z-index: 1;
-    pointer-events: none;
-}}
+/* Wave Background */
+.ecv-wave-bg {
+    position: fixed !important; bottom: 0; left: 0;
+    width: 100vw; height: 50vh; z-index: -1 !important; pointer-events: none;
+}
 </style>
 """
 
 def build_wave() -> str:
-    p = DARK
-    return f"""
-<svg class="ecv-wave-bg" viewBox="0 0 1440 240" preserveAspectRatio="none"
-     xmlns="http://www.w3.org/2000/svg">
-    <path fill="{p['wave_1']}"
-          d="M0,120 C240,40 480,200 720,140 C960,80 1200,200 1440,140 L1440,240 L0,240 Z">
+    return """
+<svg class="ecv-wave-bg" viewBox="0 0 1440 240" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path fill="rgba(56, 189, 248, 0.05)" d="M0,120 C240,40 480,200 720,140 C960,80 1200,200 1440,140 L1440,240 L0,240 Z">
         <animate attributeName="d" dur="14s" repeatCount="indefinite"
             values="M0,120 C240,40 480,200 720,140 C960,80 1200,200 1440,140 L1440,240 L0,240 Z;
                     M0,140 C240,200 480,60 720,120 C960,180 1200,40 1440,160 L1440,240 L0,240 Z;
                     M0,120 C240,40 480,200 720,140 C960,80 1200,200 1440,140 L1440,240 L0,240 Z" />
     </path>
-    <path fill="{p['wave_2']}"
-          d="M0,160 C240,100 480,240 720,180 C960,120 1200,240 1440,180 L1440,240 L0,240 Z">
+    <path fill="rgba(56, 189, 248, 0.03)" d="M0,160 C240,100 480,240 720,180 C960,120 1200,240 1440,180 L1440,240 L0,240 Z">
         <animate attributeName="d" dur="18s" repeatCount="indefinite"
             values="M0,160 C240,100 480,240 720,180 C960,120 1200,240 1440,180 L1440,240 L0,240 Z;
                     M0,180 C240,240 480,120 720,160 C960,220 1200,100 1440,200 L1440,240 L0,240 Z;
                     M0,160 C240,100 480,240 720,180 C960,120 1200,240 1440,180 L1440,240 L0,240 Z" />
     </path>
-    <path fill="{p['wave_3']}"
-          d="M0,200 C240,160 480,260 720,220 C960,180 1200,280 1440,220 L1440,240 L0,240 Z">
-        <animate attributeName="d" dur="22s" repeatCount="indefinite"
-            values="M0,200 C240,160 480,260 720,220 C960,180 1200,280 1440,220 L1440,240 L0,240 Z;
-                    M0,220 C240,260 480,160 720,200 C960,240 1200,140 1440,240 L1440,240 L0,240 Z;
-                    M0,200 C240,160 480,260 720,220 C960,180 1200,280 1440,220 L1440,240 L0,240 Z" />
-    </path>
 </svg>
 """
 
 # ════════════════════════════════════════════════════════════════════
-# 7. TOPBAR
-# ════════════════════════════════════════════════════════════════════
-def render_topbar():
-    is_admin = st.session_state.logged_in_as is not None
-
-    if is_admin:
-        c1, c2 = st.columns([8, 2])
-    else:
-        c1 = st.columns([1])[0]
-
-    with c1:
-        title = "E-<span>CV</span> · Admin" if is_admin else "E-<span>CV</span>"
-        st.markdown(f'<div class="logo">{title}</div>', unsafe_allow_html=True)
-
-    if is_admin:
-        with c2:
-            if st.button("🚪 Keluar", type="primary", use_container_width=True):
-                st.session_state.logged_in_as = None
-                st.session_state.is_master = False
-                st.session_state.flash = None
-                st.query_params.clear()
-                st.rerun()
-
-# ════════════════════════════════════════════════════════════════════
-# 8. PUBLIC VIEW
+# 7. PUBLIC VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_public_view(users: list):
+    st.markdown('<h1 class="title-main">E-CV Kelompok</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle-main">Silakan pilih tab di bawah untuk melihat profil dan mengunduh berkas.</p>', unsafe_allow_html=True)
+
     tabs = st.tabs([u["name"] for u in users])
 
     for tab, u in zip(tabs, users):
         with tab:
-            col_left, col_right = st.columns([1, 2.4], gap="large")
+            col_left, col_right = st.columns([1, 2.2], gap="large")
 
             with col_left:
+                # Avatar
                 if u.get("profilePicture"):
-                    avatar_html = f'<img class="avatar-img" src="{esc(u["profilePicture"])}" alt="avatar" />'
+                    avatar_html = f'<img class="profile-img" src="{esc(u["profilePicture"])}" alt="avatar" />'
                 else:
-                    avatar_html = f'<div class="avatar">{esc((u["name"] or "?")[0])}</div>'
+                    initial = esc((u["name"] or "?")[0].upper())
+                    avatar_html = f'<div class="profile-img-container">{initial}</div>'
+
+                # Contact Links
+                contacts = []
+                if u.get("email"): contacts.append(f'<a href="mailto:{esc(u["email"])}" class="contact-item"><div class="contact-icon">✉</div> {esc(u["email"])}</a>')
+                if u.get("phone"): contacts.append(f'<a href="tel:{esc(u["phone"])}" class="contact-item"><div class="contact-icon">📞</div> {esc(u["phone"])}</a>')
+                if u.get("location"): contacts.append(f'<div class="contact-item"><div class="contact-icon">📍</div> {esc(u["location"])}</div>')
+                if u.get("linkedin"): contacts.append(f'<a href="https://{esc(u["linkedin"])}" target="_blank" class="contact-item"><div class="contact-icon">in</div> LinkedIn</a>')
+                if u.get("github"): contacts.append(f'<a href="https://{esc(u["github"])}" target="_blank" class="contact-item"><div class="contact-icon">🐙</div> GitHub</a>')
+                
+                contact_html = "".join(contacts) or '<div class="text-muted">Belum ada kontak.</div>'
 
                 st.markdown(f"""
-                    <div class="profile-card">
+                    <div class="glass-card" style="text-align: center;">
                         {avatar_html}
-                        <div class="p-name">{esc(u['name'])}</div>
-                        <div class="p-role">Mahasiswa</div>
-                        <div class="p-nim">NIM {esc(u['nim'])}</div>
-                        <div class="p-bio">{esc(u['bio'])}</div>
-                        <div class="p-contact">📧 {esc(u['email'])}</div>
-                        <div class="p-contact">📱 {esc(u['phone'])}</div>
+                        <div class="profile-name">{esc(u['name'])}</div>
+                        <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
+                        <div class="profile-nim">NIM: {esc(u['nim'])}</div>
+                        <div style="text-align: left;">
+                            <div class="card-header" style="font-size: 0.75rem;">KONTAK</div>
+                            {contact_html}
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
             with col_right:
+                # Profil
+                st.markdown(f'''
+                    <div class="glass-card">
+                        <div class="card-header">PROFIL</div>
+                        <div class="list-desc">{esc(u.get('bio', 'Belum ada deskripsi profil.'))}</div>
+                    </div>
+                ''', unsafe_allow_html=True)
+
+                # Pendidikan
                 edu_html = "".join(
-                    f'<div class="item"><div class="t">{esc(e.get("degree", ""))}</div>'
-                    f'<div class="s">{esc(e.get("institution", ""))} · {esc(e.get("year", ""))}</div></div>'
+                    f'<div class="list-item"><div class="list-title">{esc(e.get("degree", ""))}</div>'
+                    f'<div class="list-sub">{esc(e.get("institution", ""))} • {esc(e.get("year", ""))}</div></div>'
                     for e in (u.get("education") or [])
-                ) or '<div class="empty">Belum ada data pendidikan.</div>'
-                st.markdown(f'<div class="card"><h3>Pendidikan</h3>{edu_html}</div>',
-                            unsafe_allow_html=True)
+                ) or '<div class="list-sub">Belum ada data.</div>'
+                st.markdown(f'<div class="glass-card"><div class="card-header">PENDIDIKAN</div>{edu_html}</div>', unsafe_allow_html=True)
 
+                # Pengalaman
                 exp_html = "".join(
-                    f'<div class="item"><div class="t">{esc(e.get("role", ""))}</div>'
-                    f'<div class="s">{esc(e.get("company", ""))} · {esc(e.get("year", ""))}</div>'
-                    f'<div class="d">{esc(e.get("description", ""))}</div></div>'
+                    f'<div class="list-item"><div class="list-title">{esc(e.get("role", ""))}</div>'
+                    f'<div class="list-sub">{esc(e.get("company", ""))} • {esc(e.get("year", ""))}</div>'
+                    f'<div class="list-desc">{esc(e.get("description", ""))}</div></div>'
                     for e in (u.get("experience") or [])
-                ) or '<div class="empty">Belum ada pengalaman.</div>'
-                st.markdown(f'<div class="card"><h3>Pengalaman</h3>{exp_html}</div>',
-                            unsafe_allow_html=True)
+                ) or '<div class="list-sub">Belum ada data.</div>'
+                st.markdown(f'<div class="glass-card"><div class="card-header">PENGALAMAN</div>{exp_html}</div>', unsafe_allow_html=True)
 
-                skill_html = "".join(
-                    f'<span class="chip">{esc(s)}</span>'
-                    for s in (u.get("skills") or [])
-                ) or '<div class="empty">Belum ada keahlian.</div>'
-                st.markdown(f'<div class="card"><h3>Keahlian</h3><div class="abilities">{skill_html}</div></div>',
-                            unsafe_allow_html=True)
+                # Keahlian
+                skill_html = "".join(f'<span class="skill-chip">{esc(s)}</span>' for s in (u.get("skills") or [])) or '<div class="list-sub">Belum ada data.</div>'
+                st.markdown(f'<div class="glass-card"><div class="card-header">KEAHLIAN</div><div>{skill_html}</div></div>', unsafe_allow_html=True)
 
+                # Proyek Utama
                 mp = u.get("mainProject") or {}
-                st.markdown(
-                    f'<div class="card"><h3>Proyek Utama</h3>'
-                    f'<a class="project-main" href="{esc(mp.get("url", "#"))}" target="_blank" rel="noopener">'
-                    f'{esc(mp.get("name", "—"))}</a></div>',
-                    unsafe_allow_html=True,
-                )
+                if mp.get("url"):
+                    st.markdown(f'''
+                        <div class="glass-card">
+                            <div class="card-header">PROYEK UTAMA</div>
+                            <a href="{esc(mp.get('url'))}" target="_blank" class="btn-link">🔗 {esc(mp.get('name', 'Lihat Proyek'))}</a>
+                        </div>
+                    ''', unsafe_allow_html=True)
 
+                # Proyek Lainnya
                 proj_html = "".join(
-                    f'<div class="link-row"><span>▹ {esc(p.get("name", ""))}</span>'
-                    f'<a href="{esc(p.get("url", "#"))}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">↗</a></div>'
+                    f'<a href="{esc(p.get("url", "#"))}" target="_blank" class="btn-link">↗ {esc(p.get("name", ""))}</a><br>'
                     for p in (u.get("otherProjects") or [])
-                ) or '<div class="empty">Belum ada proyek lain.</div>'
-                st.markdown(f'<div class="card"><h3>Proyek Lainnya</h3>{proj_html}</div>',
-                            unsafe_allow_html=True)
+                ) or '<div class="list-sub">Belum ada proyek lain.</div>'
+                st.markdown(f'<div class="glass-card"><div class="card-header">PROYEK LAINNYA</div>{proj_html}</div>', unsafe_allow_html=True)
 
+                # Berkas
                 files_html = "".join(
-                    f'<a class="link-row" href="{esc(f.get("url", "#"))}" target="_blank" rel="noopener">'
-                    f'<span>{"📄" if f.get("type") == "pdf" else "🖼️"} {esc(f.get("name", ""))}</span>'
-                    f'<span>⬇️</span></a>'
+                    f'<a href="{esc(f.get("url", "#"))}" target="_blank" class="btn-link download">📄 Unduh {esc(f.get("name", ""))}</a><br>'
                     for f in (u.get("files") or [])
-                ) or '<div class="empty">Belum ada berkas.</div>'
-                st.markdown(f'<div class="card"><h3>Berkas</h3>{files_html}</div>',
-                            unsafe_allow_html=True)
+                ) or '<div class="list-sub">Belum ada berkas.</div>'
+                st.markdown(f'<div class="glass-card"><div class="card-header">BERKAS</div>{files_html}</div>', unsafe_allow_html=True)
+
 
 # ════════════════════════════════════════════════════════════════════
-# 9. LOGIN VIEW
+# 8. LOGIN VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_login_page(data: dict):
-    st.subheader("🔐 Login Admin")
-    st.caption("Masukkan NIM dan sandi Anda, atau `master` dan sandi master.")
+    st.markdown('<h1 class="title-main">Panel Admin</h1>', unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<p style="text-align: center; color: #94a3b8; margin-bottom: 2rem;">Masuk sebagai Master</p>', unsafe_allow_html=True)
+        
+        if st.button("← Kembali ke Beranda", use_container_width=True):
+            st.query_params.clear()
+            st.rerun()
 
-    with st.form("login_form"):
-        username = st.text_input("NIM / Username", placeholder="221001001 atau master")
-        password = st.text_input("Sandi", type="password", placeholder="••••••••")
-        submitted = st.form_submit_button("Masuk", type="primary", use_container_width=True)
-
-    if submitted:
-        username_norm = username.strip()
-        if not username_norm or not password:
-            st.error("❌ NIM dan sandi wajib diisi.")
-        elif username_norm.lower() == "master":
-            if sha256(password) == data["masterPassword"]:
-                st.session_state.logged_in_as = "master"
-                st.session_state.is_master = True
-                st.session_state.flash = "✅ Selamat datang, Master Admin."
-                st.rerun()
-            else:
-                st.error("❌ Sandi master salah.")
-        else:
-            user = next((u for u in data["users"] if u["nim"] == username_norm), None)
-            if user and sha256(password) == user["password"]:
-                st.session_state.logged_in_as = user["id"]
-                st.session_state.is_master = False
-                st.session_state.flash = f"✅ Selamat datang, {user['name']}."
-                st.rerun()
-            else:
-                st.error("❌ NIM atau sandi salah.")
-
-    st.divider()
-    if st.button("← Kembali ke Publik", use_container_width=True):
-        st.query_params.clear()
-        st.rerun()
+        tab1, tab2 = st.tabs(["Login Pengguna", "Login Master"])
+        
+        with tab1:
+            with st.form("login_user"):
+                selected_user = st.selectbox("PILIH PENGGUNA", options=[u["name"] for u in data["users"]])
+                pwd = st.text_input("KATA SANDI", type="password")
+                if st.form_submit_button("Masuk", use_container_width=True):
+                    user = next((u for u in data["users"] if u["name"] == selected_user), None)
+                    if user and sha256(pwd) == user["password"]:
+                        st.session_state.logged_in_as = user["id"]
+                        st.session_state.is_master = False
+                        st.session_state.flash = f"✅ Selamat datang, {user['name']}."
+                        st.rerun()
+                    else:
+                        st.error("❌ Sandi salah.")
+                        
+        with tab2:
+            with st.form("login_master"):
+                pwd = st.text_input("KATA SANDI MASTER", type="password")
+                if st.form_submit_button("Masuk", use_container_width=True):
+                    if sha256(pwd) == data["masterPassword"]:
+                        st.session_state.logged_in_as = "master"
+                        st.session_state.is_master = True
+                        st.session_state.flash = "✅ Selamat datang, Master Admin."
+                        st.rerun()
+                    else:
+                        st.error("❌ Sandi master salah.")
 
 # ════════════════════════════════════════════════════════════════════
-# 10. ADMIN PANEL
+# 9. ADMIN PANEL
 # ════════════════════════════════════════════════════════════════════
 def render_admin_panel(data: dict):
+    st.markdown('<h1 class="title-main">Panel Admin</h1>', unsafe_allow_html=True)
     is_master = st.session_state.is_master
     current_user_id = st.session_state.logged_in_as
 
+    # Top Navigation
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown(f'<p style="text-align: center; color: #94a3b8; margin-bottom: 1rem;">Masuk sebagai {"Master" if is_master else "Pengguna"}</p>', unsafe_allow_html=True)
+        if st.button("← Kembali ke Beranda", use_container_width=True):
+            st.query_params.clear()
+            st.session_state.logged_in_as = None
+            st.rerun()
+
+    # Master Badge
     if is_master:
-        st.caption("Masuk sebagai **Master Admin**")
-    else:
-        cu = next(u for u in data["users"] if u["id"] == current_user_id)
-        st.caption(f"Masuk sebagai **{cu['name']}** ({cu['nim']})")
+        c1, c2 = st.columns([4, 1])
+        with c1:
+            st.markdown('<div style="font-weight: 600; font-size: 1.1rem;">👑 Admin Master</div>', unsafe_allow_html=True)
+        with c2:
+            if st.button("Keluar", use_container_width=True):
+                st.session_state.logged_in_as = None
+                st.session_state.is_master = False
+                st.query_params.clear()
+                st.rerun()
+        st.write("")
 
-    if not CLOUDINARY_READY:
-        st.warning("⚠️ Cloudinary belum dikonfigurasi — unggah berkas dinonaktifkan.")
-
-    if st.session_state.flash:
-        st.success(st.session_state.flash)
-        st.session_state.flash = None
-
+    # User Selector (Master only)
     if is_master:
         options = {f"{u['name']} ({u['nim']})": u["id"] for u in data["users"]}
-        selected_label = st.selectbox("Pilih pengguna yang akan dikelola", list(options.keys()))
-        target_user_id = options[selected_label]
+        c1, c2 = st.columns([1, 3])
+        with c1:
+            st.markdown('<div style="font-weight: 600; font-size: 0.9rem; margin-top: 8px;">Kelola Pengguna:</div>', unsafe_allow_html=True)
+        with c2:
+            selected_label = st.selectbox("Pilih Pengguna", list(options.keys()), label_visibility="collapsed")
+            target_user_id = options[selected_label]
     else:
         target_user_id = current_user_id
 
     target_user = next(u for u in data["users"] if u["id"] == target_user_id)
 
-    tab_labels = (["📝 Edit Data", "📁 Berkas", "🔄 Reset Sandi"] if is_master
-                  else ["📝 Edit Data", "📁 Berkas", "🔑 Ubah Sandi"])
+    if st.session_state.flash:
+        st.success(st.session_state.flash)
+        st.session_state.flash = None
 
-    tabs = st.tabs(tab_labels)
-    with tabs[0]:
+    # Tabs
+    tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
+
+    with tab_edit:
         render_edit_data_tab(target_user, data)
-    with tabs[1]:
+    with tab_files:
         render_files_tab(target_user, data)
-    with tabs[2]:
+    with tab_pwd:
         if is_master:
             render_reset_password_tab(target_user, data)
         else:
@@ -671,139 +552,119 @@ def render_admin_panel(data: dict):
 
 
 def render_edit_data_tab(u: dict, data: dict):
-    st.markdown("#### Foto Profil")
-    av_col1, av_col2 = st.columns([1, 3])
-    with av_col1:
-        if u.get("profilePicture"):
-            st.image(u["profilePicture"], width=120)
-        else:
-            initials = esc((u["name"] or "?")[0])
-            st.markdown(
-                f'<div style="width:120px;height:120px;border-radius:50%;'
-                f'background:rgba(30, 41, 59, 0.7);color:#f8fafc;display:flex;align-items:center;'
-                f'justify-content:center;font-size:44px;font-weight:700;'
-                f'border:4px solid rgba(30, 41, 59, 0.7);box-shadow:0 4px 12px rgba(0,0,0,0.1);">'
-                f'{initials}</div>',
-                unsafe_allow_html=True,
-            )
-    with av_col2:
-        av_key = f"avatar_uploader_{u['id']}_{st.session_state.avatar_upload_version}"
-        avatar_file = st.file_uploader(
-            "Unggah foto profil (.png / .jpeg · maks 5 MB)",
-            type=["png", "jpeg", "jpg"],
-            key=av_key,
-            disabled=not CLOUDINARY_READY,
-        )
-        if avatar_file is not None:
-            ok, msg = validate_upload(avatar_file)
-            if not ok:
-                st.error(f"❌ {msg}")
-            else:
-                if st.button("⬆️ Unggah Foto Profil", key=f"av_btn_{av_key}", type="primary"):
-                    result = upload_bytes(avatar_file.getvalue(), avatar_file.name, "image")
-                    if result:
-                        u["profilePicture"] = result["url"]
-                        save_data(data)
-                        st.session_state.avatar_upload_version += 1
-                        st.session_state.flash = "✅ Foto profil berhasil diperbarui."
-                        st.rerun()
-        if u.get("profilePicture"):
-            if st.button("🗑️ Hapus Foto Profil", key=f"av_del_{av_key}"):
-                u["profilePicture"] = ""
-                save_data(data)
-                st.session_state.avatar_upload_version += 1
-                st.session_state.flash = "✅ Foto profil dihapus."
-                st.rerun()
-
-    st.divider()
-
     version = st.session_state.save_version
     key_base = f"{u['id']}_{version}"
 
     with st.form(f"edit_form_{key_base}"):
-        st.markdown("#### Data Dasar")
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("Nama Lengkap", value=u.get("name", ""), key=f"name_{key_base}")
-            email = st.text_input("Email", value=u.get("email", ""), key=f"email_{key_base}")
-        with col2:
-            nim = st.text_input("NIM", value=u.get("nim", ""), key=f"nim_{key_base}")
-            phone = st.text_input("Telepon", value=u.get("phone", ""), key=f"phone_{key_base}")
+        # Foto Profile
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Foto Profil</div>', unsafe_allow_html=True)
+        av_col1, av_col2 = st.columns([1, 3])
+        with av_col1:
+            if u.get("profilePicture"):
+                st.image(u["profilePicture"], width=100)
+            else:
+                st.markdown('<div class="profile-img-container" style="width: 100px; height: 100px; font-size: 2rem;">?</div>', unsafe_allow_html=True)
+        with av_col2:
+            av_key = f"avatar_uploader_{u['id']}_{st.session_state.avatar_upload_version}"
+            avatar_file = st.file_uploader("Pilih file", type=["png", "jpeg", "jpg"], key=av_key, disabled=not CLOUDINARY_READY, label_visibility="collapsed")
+            if avatar_file is not None:
+                ok, msg = validate_upload(avatar_file)
+                if ok:
+                    if st.form_submit_button("Unggah Foto", type="secondary"):
+                        result = upload_bytes(avatar_file.getvalue(), avatar_file.name, "image")
+                        if result:
+                            u["profilePicture"] = result["url"]
+                            save_data(data)
+                            st.session_state.avatar_upload_version += 1
+                            st.session_state.flash = "✅ Foto profil diperbarui."
+                            st.rerun()
+        
+        st.divider()
 
-        bio = st.text_area("Bio", value=u.get("bio", ""), key=f"bio_{key_base}", height=90)
-        skills_text = st.text_input(
-            "Keahlian (pisahkan dengan koma)",
-            value=", ".join(u.get("skills") or []),
-            key=f"skills_{key_base}",
-        )
+        # Row 1
+        c1, c2, c3 = st.columns(3)
+        with c1: nim = st.text_input("NIM", value=u.get("nim", ""), key=f"nim_{key_base}")
+        with c2: name = st.text_input("NAMA LENGKAP", value=u.get("name", ""), key=f"name_{key_base}")
+        with c3: role = st.text_input("POSISI / PERAN", value=u.get("role", ""), key=f"role_{key_base}")
 
-        st.markdown("#### Pendidikan")
+        # Row 2
+        bio = st.text_area("PROFIL SINGKAT", value=u.get("bio", ""), key=f"bio_{key_base}", height=100)
+
+        # Row 3 (Contact)
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-top: 8px; margin-bottom: 8px;">Kontak</div>', unsafe_allow_html=True)
+        c1, c2, c3, c4, c5 = st.columns(5)
+        with c1: email = st.text_input("EMAIL", value=u.get("email", ""), key=f"email_{key_base}")
+        with c2: phone = st.text_input("TELEPON", value=u.get("phone", ""), key=f"phone_{key_base}")
+        with c3: location = st.text_input("LOKASI", value=u.get("location", ""), key=f"loc_{key_base}")
+        with c4: linkedin = st.text_input("LINKEDIN", value=u.get("linkedin", ""), key=f"li_{key_base}")
+        with c5: github = st.text_input("GITHUB", value=u.get("github", ""), key=f"gh_{key_base}")
+
+        st.divider()
+
+        # Lists (using data_editor for simplicity and cleaner UI within a form)
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Pendidikan</div>', unsafe_allow_html=True)
         edu_df = pd.DataFrame(u.get("education") or [], columns=["degree", "institution", "year"])
-        edited_edu = st.data_editor(edu_df, num_rows="dynamic", use_container_width=True,
-                                    key=f"edu_editor_{key_base}")
+        edited_edu = st.data_editor(edu_df, num_rows="dynamic", use_container_width=True, key=f"edu_{key_base}")
 
-        st.markdown("#### Pengalaman")
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Pengalaman</div>', unsafe_allow_html=True)
         exp_df = pd.DataFrame(u.get("experience") or [], columns=["role", "company", "year", "description"])
-        edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True,
-                                    key=f"exp_editor_{key_base}")
+        edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True, key=f"exp_{key_base}")
 
-        st.markdown("#### Proyek Utama")
+        st.divider()
+
+        # Skills & Projects
+        skills_text = st.text_input("KEAHLIAN (PISAHKAN DENGAN KOMA)", value=", ".join(u.get("skills") or []), key=f"skills_{key_base}")
+        
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-top: 8px; margin-bottom: 8px;">Proyek</div>', unsafe_allow_html=True)
         mp = u.get("mainProject") or {}
-        col1, col2 = st.columns(2)
-        with col1:
-            mp_name = st.text_input("Nama Proyek Utama", value=mp.get("name", ""), key=f"mpname_{key_base}")
-        with col2:
-            mp_url = st.text_input("URL Proyek Utama", value=mp.get("url", ""), key=f"mpurl_{key_base}")
+        c1, c2 = st.columns(2)
+        with c1: mp_name = st.text_input("LINK PROYEK UTAMA (NAMA)", value=mp.get("name", ""), key=f"mpname_{key_base}")
+        with c2: mp_url = st.text_input("LINK PROYEK UTAMA (URL)", value=mp.get("url", ""), key=f"mpurl_{key_base}")
 
-        st.markdown("#### Proyek Lainnya")
         proj_df = pd.DataFrame(u.get("otherProjects") or [], columns=["name", "url"])
-        edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True,
-                                     key=f"proj_editor_{key_base}")
+        edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key=f"proj_{key_base}")
 
-        submitted = st.form_submit_button("💾 Simpan Perubahan", type="primary", use_container_width=True)
+        # Save Button
+        submitted = st.form_submit_button("Simpan Perubahan", type="primary", use_container_width=True)
 
     if submitted:
-        u["name"] = name.strip()
         u["nim"] = nim.strip()
+        u["name"] = name.strip()
+        u["role"] = role.strip()
+        u["bio"] = bio.strip()
         u["email"] = email.strip()
         u["phone"] = phone.strip()
-        u["bio"] = bio.strip()
+        u["location"] = location.strip()
+        u["linkedin"] = linkedin.strip()
+        u["github"] = github.strip()
         u["skills"] = [s.strip() for s in skills_text.split(",") if s.strip()]
         u["education"] = df_to_records(edited_edu, ["degree", "institution", "year"])
         u["experience"] = df_to_records(edited_exp, ["role", "company", "year", "description"])
         u["mainProject"] = {"name": mp_name.strip(), "url": mp_url.strip()}
         u["otherProjects"] = df_to_records(edited_proj, ["name", "url"])
+        
         save_data(data)
         st.session_state.save_version += 1
         st.session_state.flash = "✅ Data berhasil disimpan."
         st.rerun()
 
-
 def render_files_tab(u: dict, data: dict):
-    st.markdown("#### Unggah Berkas Baru")
-    st.caption("Hanya `.pdf`, `.png`, `.jpeg` · **maksimal 5 MB** per berkas.")
+    st.markdown("### Unggah Berkas")
+    st.caption("Hanya `.pdf`, `.png`, `.jpeg` · maksimal 5 MB.")
 
     fu_key = f"file_uploader_{u['id']}_{st.session_state.file_upload_version}"
-    new_file = st.file_uploader(
-        "Pilih berkas",
-        type=["pdf", "png", "jpeg", "jpg"],
-        key=fu_key,
-        disabled=not CLOUDINARY_READY,
-    )
+    new_file = st.file_uploader("Pilih berkas", type=["pdf", "png", "jpeg", "jpg"], key=fu_key, disabled=not CLOUDINARY_READY)
 
     if new_file is not None:
         ok, msg = validate_upload(new_file)
-        if not ok:
-            st.error(f"❌ {msg}")
+        if not ok: st.error(f"❌ {msg}")
         else:
-            st.info(f"📎 **{new_file.name}** · {new_file.size / 1024:.1f} KB")
-            if st.button("⬆️ Unggah Berkas", type="primary", key=f"fu_btn_{fu_key}"):
+            if st.button("⬆️ Unggah Berkas", type="primary"):
                 resource_type = "raw" if new_file.type == "application/pdf" else "image"
                 result = upload_bytes(new_file.getvalue(), new_file.name, resource_type)
                 if result:
                     u["files"].append({
-                        "name": new_file.name,
-                        "url": result["url"],
+                        "name": new_file.name, "url": result["url"],
                         "public_id": result["public_id"],
                         "type": "pdf" if new_file.type == "application/pdf" else "image",
                     })
@@ -814,89 +675,62 @@ def render_files_tab(u: dict, data: dict):
 
     st.divider()
     st.markdown(f"#### Berkas Terdaftar ({len(u.get('files') or [])})")
-
+    
     files = u.get("files") or []
     if not files:
-        st.markdown('<div class="empty">Belum ada berkas.</div>', unsafe_allow_html=True)
+        st.info("Belum ada berkas.")
         return
 
     for i, f in enumerate(files):
-        col1, col2, col3 = st.columns([4, 1.2, 1])
-        with col1:
-            icon = "📄" if f.get("type") == "pdf" else "🖼️"
-            st.markdown(f"{icon} **{esc(f.get('name', 'tanpa nama'))}**")
-        with col2:
-            st.link_button("👁️ Lihat", f.get("url", "#"), use_container_width=True)
-        with col3:
-            unique_key = f"del_{u['id']}_{i}_{f.get('public_id', f.get('name', 'x'))}"
-            if st.button("🗑️ Hapus", key=unique_key, use_container_width=True):
-                destroy_on_cloudinary(
-                    f.get("public_id", ""),
-                    "raw" if f.get("type") == "pdf" else "image",
-                )
+        c1, c2, c3 = st.columns([4, 1, 1])
+        with c1: st.markdown(f"📄 **{esc(f.get('name'))}**")
+        with c2: st.link_button("Lihat", f.get("url", "#"), use_container_width=True)
+        with c3:
+            if st.button("Hapus", key=f"del_{i}_{f.get('public_id')}", type="primary"):
+                destroy_on_cloudinary(f.get("public_id", ""), "raw" if f.get("type") == "pdf" else "image")
                 u["files"].remove(f)
                 save_data(data)
-                st.session_state.flash = f"✅ Berkas '{f.get('name')}' dihapus."
+                st.session_state.flash = f"✅ Berkas dihapus."
                 st.rerun()
 
-
 def render_change_password_tab(u: dict, data: dict):
-    st.markdown("#### Ubah Sandi Anda")
-    st.caption("Minimal 6 karakter. Sandi lama wajib dimasukkan untuk verifikasi.")
-
+    st.markdown("### Ubah Sandi")
     with st.form(f"change_pwd_{u['id']}"):
         old = st.text_input("Sandi lama", type="password")
         new1 = st.text_input("Sandi baru", type="password")
         new2 = st.text_input("Konfirmasi sandi baru", type="password")
-        submitted = st.form_submit_button("Ubah Sandi", type="primary", use_container_width=True)
-
-    if submitted:
-        if sha256(old) != u["password"]:
-            st.error("❌ Sandi lama salah.")
-        elif len(new1) < 6:
-            st.error("❌ Sandi baru minimal 6 karakter.")
-        elif new1 != new2:
-            st.error("❌ Konfirmasi sandi tidak cocok.")
-        else:
-            u["password"] = sha256(new1)
-            save_data(data)
-            st.session_state.flash = "✅ Sandi berhasil diubah."
-            st.rerun()
-
+        if st.form_submit_button("Ubah Sandi", type="primary"):
+            if sha256(old) != u["password"]: st.error("❌ Sandi lama salah.")
+            elif len(new1) < 6: st.error("❌ Sandi baru minimal 6 karakter.")
+            elif new1 != new2: st.error("❌ Konfirmasi tidak cocok.")
+            else:
+                u["password"] = sha256(new1)
+                save_data(data)
+                st.session_state.flash = "✅ Sandi berhasil diubah."
+                st.rerun()
 
 def render_reset_password_tab(u: dict, data: dict):
-    st.markdown(f"#### Reset Sandi: {u['name']} ({u['nim']})")
-    st.caption("Sebagai Master Admin, Anda dapat mengganti sandi pengguna tanpa perlu sandi lama.")
-
+    st.markdown(f"### Reset Sandi: {u['name']}")
     with st.form(f"reset_pwd_{u['id']}"):
         new1 = st.text_input("Sandi baru", type="password")
         new2 = st.text_input("Konfirmasi sandi baru", type="password")
-        submitted = st.form_submit_button("Reset Sandi", type="primary", use_container_width=True)
-
-    if submitted:
-        if len(new1) < 6:
-            st.error("❌ Sandi baru minimal 6 karakter.")
-        elif new1 != new2:
-            st.error("❌ Konfirmasi sandi tidak cocok.")
-        else:
-            u["password"] = sha256(new1)
-            save_data(data)
-            st.session_state.flash = f"✅ Sandi {u['name']} berhasil direset."
-            st.rerun()
+        if st.form_submit_button("Reset Sandi", type="primary"):
+            if len(new1) < 6: st.error("❌ Minimal 6 karakter.")
+            elif new1 != new2: st.error("❌ Konfirmasi tidak cocok.")
+            else:
+                u["password"] = sha256(new1)
+                save_data(data)
+                st.session_state.flash = f"✅ Sandi {u['name']} berhasil direset."
+                st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
-# 11. ROUTING
+# 10. ROUTING
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
-# Render topbar
-render_topbar()
-
-# Apply exact dark colors and wave
 st.markdown(build_css(), unsafe_allow_html=True)
 st.markdown(build_wave(), unsafe_allow_html=True)
 
-# Route views
 if st.session_state.logged_in_as:
     render_admin_panel(data)
 elif st.query_params.get("admin") == "1":
