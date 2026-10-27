@@ -62,7 +62,7 @@ components.html("""
         // Tab Persistence (Admin Panel only)
         const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
         let isAdmin = false;
-        if (tabs.length === 3 && tabs[0].innerText.includes("Edit Data")) {
+        if (tabs.length >= 3 && tabs[0].innerText.includes("Edit Data")) {
             isAdmin = true;
         }
         
@@ -106,7 +106,6 @@ except Exception:
 MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
-# Set path specifically to the workspace folder as requested
 BASE_DIR = Path("/workspaces/movies-dataset")
 if not BASE_DIR.exists():
     BASE_DIR = Path(__file__).parent
@@ -114,7 +113,6 @@ DATA_FILE = BASE_DIR / "data" / "users.json"
 DATA_FILE.parent.mkdir(exist_ok=True, parents=True)
 
 def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: str):
-    # 1. Save Locally
     user_dir = DATA_FILE.parent / user_id
     user_dir.mkdir(exist_ok=True, parents=True)
     file_path = user_dir / filename
@@ -127,7 +125,6 @@ def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: 
 
     local_path = str(file_path.relative_to(DATA_FILE.parent))
     
-    # 2. Also save to Cloudinary if ready (optional)
     if CLOUDINARY_READY:
         base = filename.rsplit(".", 1)[0].replace(" ", "_")[:60]
         unique_id = f"ecv_{int(time.time())}_{base}"
@@ -141,7 +138,7 @@ def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: 
                 "local_path": local_path
             }
         except Exception:
-            pass # Fallback to local only if Cloudinary fails
+            pass
             
     return {"url": "#", "public_id": "", "local_path": local_path}
 
@@ -184,6 +181,14 @@ def save_data(data: dict) -> None:
 # ════════════════════════════════════════════════════════════════════
 SEED = {
     "masterPassword": "capstone12",
+    "team_projects": {
+        "main": {"name": "Sistem Informasi Akademik Terpadu", "url": "https://github.com/kelompok/ecv-project"},
+        "others": [
+            {"name": "Aplikasi Kasir Sederhana", "url": "https://github.com/kelompok/kasir"},
+            {"name": "Portfolio Website", "url": "https://github.com/kelompok/portfolio"},
+            {"name": "Dashboard Analitik", "url": "https://github.com/kelompok/dashboard"}
+        ]
+    },
     "users": [
         {
             "id": "user1", "name": "Ahmad Fauzi", "role": "Frontend Developer", "nim": "221001001",
@@ -199,11 +204,6 @@ SEED = {
                 {"role": "Freelance Web Developer", "company": "Mandiri", "year": "2023 - Sekarang", "description": "Mengerjakan berbagai proyek landing page dan e-commerce untuk UMKM."},
             ],
             "skills": ["JavaScript", "Python", "React", "Node.js", "MySQL", "Git"],
-            "mainProject": {"name": "Sistem Informasi Akademik", "url": "https://github.com/ahmad/siakad"},
-            "otherProjects": [
-                {"name": "Aplikasi Kasir Sederhana", "url": "https://github.com/ahmad/kasir"},
-                {"name": "Portfolio Website", "url": "https://github.com/ahmad/portfolio"},
-            ],
             "files": [],
         },
         {
@@ -214,8 +214,6 @@ SEED = {
             "education": [{"degree": "S1 Sistem Informasi", "institution": "Institut Teknologi Bandung", "year": "2022 - Sekarang"}],
             "experience": [{"role": "UI/UX Design Intern", "company": "Startup Kreatif", "year": "2024", "description": "Merancang user flow dan wireframe untuk aplikasi mobile."}],
             "skills": ["Figma", "UI Design", "UX Research", "SQL", "Tableau", "Python"],
-            "mainProject": {"name": "Dashboard Analitik Penjualan", "url": "https://github.com/siti/dashboard"},
-            "otherProjects": [{"name": "Redesign Aplikasi OVO", "url": "https://github.com/siti/ovo-redesign"}],
             "files": [],
         },
         {
@@ -226,8 +224,6 @@ SEED = {
             "education": [{"degree": "S1 Teknik Komputer", "institution": "Universitas Gadjah Mada", "year": "2021 - Sekarang"}],
             "experience": [{"role": "IoT Engineer Intern", "company": "PT Smart Device", "year": "2024", "description": "Mengembangkan firmware perangkat IoT berbasis ESP32."}],
             "skills": ["C++", "Arduino", "Raspberry Pi", "Python", "MQTT", "Linux"],
-            "mainProject": {"name": "Sistem Monitoring Suhu IoT", "url": "https://github.com/budi/iot-monitor"},
-            "otherProjects": [{"name": "Smart Home Controller", "url": "https://github.com/budi/smarthome"}],
             "files": [],
         },
     ],
@@ -240,7 +236,6 @@ def load_and_migrate() -> dict:
     try:
         data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     except Exception:
-        # Fallback if user corrupted the JSON manually
         data = SEED
         DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -251,6 +246,11 @@ def load_and_migrate() -> dict:
     if not is_hash(data["masterPassword"]):
         data["masterPassword"] = sha256(data["masterPassword"])
         changed = True
+        
+    if "team_projects" not in data:
+        data["team_projects"] = SEED["team_projects"]
+        changed = True
+
     for u in data.get("users", []):
         if "password" not in u:
             u["password"] = "password123"
@@ -262,6 +262,10 @@ def load_and_migrate() -> dict:
         u.setdefault("files", [])
         u.setdefault("role", "")
         u.setdefault("location", "")
+        # Clean up old project fields if they exist
+        if "mainProject" in u: del u["mainProject"]; changed = True
+        if "otherProjects" in u: del u["otherProjects"]; changed = True
+        
     if changed:
         DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return data
@@ -272,7 +276,7 @@ def load_and_migrate() -> dict:
 for key, default in [
     ("logged_in_as", None), ("is_master", False), ("save_version", 0),
     ("flash", None), ("file_upload_version", 0), ("avatar_upload_version", 0),
-    ("scroll_to_top", False), ("view_user_id", None)
+    ("scroll_to_top", False), ("view_user_id", None), ("proj_version", 0)
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -298,7 +302,7 @@ html, body, [class*="css"] { color: #e2e8f0 !important; }
 
 /* Hide Streamlit elements */
 header[data-testid="stHeader"], #MainMenu, footer, [data-testid="stStatusWidget"] { display: none !important; }
-[data-testid="stFileUploadDropzone"] small { display: none !important; } /* Hide 200MB text */
+[data-testid="stFileUploadDropzone"] small { display: none !important; }
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
@@ -317,6 +321,7 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
     border-radius: 16px; padding: 24px; margin-bottom: 20px;
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
 }
 .card-header {
     font-size: 0.85rem; font-weight: 700; color: #cbd5e1;
@@ -350,7 +355,6 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
     margin-bottom: 12px; font-size: 0.9rem; color: #94a3b8;
     text-decoration: none !important; word-break: break-word;
 }
-.contact-item:hover { color: #e2e8f0; }
 .contact-icon {
     min-width: 24px; height: 24px; background: rgba(139, 92, 246, 0.15);
     border-radius: 6px; display: flex; align-items: center; justify-content: center;
@@ -385,7 +389,7 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link:hover { background: rgba(139, 92, 246, 0.2); }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
 
-/* Streamlit Tabs - Force Centering and Glass Card */
+/* Streamlit Tabs */
 div[data-testid="stTabs"] { width: 100%; }
 div[data-testid="stTabs"] > div > div:first-child { display: flex; justify-content: center; width: 100%; }
 div[data-baseweb="tab-list"] {
@@ -490,7 +494,7 @@ def build_wave() -> str:
 # ════════════════════════════════════════════════════════════════════
 # 8. PUBLIC VIEW (GRID & DETAILS)
 # ════════════════════════════════════════════════════════════════════
-def render_public_grid(users: list):
+def render_public_grid(users: list, team_projects: dict):
     st.markdown('<h1 class="title-main">E-CV Kelompok</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle-main">Silakan klik pada kartu profil di bawah ini untuk melihat detail.</p>', unsafe_allow_html=True)
 
@@ -509,10 +513,9 @@ def render_public_grid(users: list):
             
             contact_html = "".join(contacts)
 
-            # Make the entire card a clickable link that updates the query param
             st.markdown(f"""
                 <a href="?profile={u['id']}" target="_self" style="text-decoration: none; color: inherit; display: block;">
-                    <div class="glass-card" style="text-align: center; height: 100%; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                    <div class="glass-card" style="text-align: center; height: 100%; cursor: pointer;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                         {avatar_html}
                         <div class="profile-name">{esc(u['name'])}</div>
                         <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
@@ -525,29 +528,28 @@ def render_public_grid(users: list):
                 </a>
             """, unsafe_allow_html=True)
 
-    # --- MOVED PROJECTS SECTION ---
-    st.markdown('<h2 class="title-main" style="font-size: 2rem; margin-top: 40px;">Kumpulan Proyek</h2>', unsafe_allow_html=True)
+    # --- TEAM PROJECTS SECTION ---
+    st.markdown('<h2 class="title-main" style="font-size: 2rem; margin-top: 40px; margin-bottom: 24px;">Kumpulan Proyek</h2>', unsafe_allow_html=True)
     p_col1, p_col2 = st.columns(2, gap="large")
     
     with p_col1:
-        st.markdown('<div class="glass-card" style="height: 100%;"><div class="card-header">PROYEK UTAMA</div>', unsafe_allow_html=True)
-        for u in users:
-            mp = u.get("mainProject") or {}
-            if mp.get("url"):
-                st.markdown(f'<a href="{esc(mp.get("url"))}" target="_blank" class="btn-link">🔗 {esc(mp.get("name"))} <span style="color:#94a3b8; font-size:0.8rem; margin-left:8px;">({esc(u["name"])})</span></a><br>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        html_main = '<div class="glass-card" style="height: 100%;"><div class="card-header">PROYEK UTAMA</div>'
+        mp = team_projects.get("main") or {}
+        if mp.get("url"):
+            html_main += f'<a href="{esc(mp.get("url"))}" target="_blank" class="btn-link">🔗 {esc(mp.get("name"))}</a><br>'
+        html_main += '</div>'
+        st.markdown(html_main, unsafe_allow_html=True)
         
     with p_col2:
-        st.markdown('<div class="glass-card" style="height: 100%;"><div class="card-header">PROYEK LAINNYA</div>', unsafe_allow_html=True)
-        for u in users:
-            for p in u.get("otherProjects") or []:
-                if p.get("url"):
-                    st.markdown(f'<a href="{esc(p.get("url"))}" target="_blank" class="btn-link">↗ {esc(p.get("name"))} <span style="color:#94a3b8; font-size:0.8rem; margin-left:8px;">({esc(u["name"])})</span></a><br>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        html_others = '<div class="glass-card" style="height: 100%;"><div class="card-header">PROYEK LAINNYA</div>'
+        for p in (team_projects.get("others") or []):
+            if p.get("url"):
+                html_others += f'<a href="{esc(p.get("url"))}" target="_blank" class="btn-link">↗ {esc(p.get("name"))}</a><br>'
+        html_others += '</div>'
+        st.markdown(html_others, unsafe_allow_html=True)
 
 
 def render_public_detail(u: dict):
-    # Clear query params on back
     if st.button("← Kembali ke Dashboard"):
         st.query_params.clear()
         st.session_state.view_user_id = None
@@ -627,15 +629,14 @@ def render_public_detail(u: dict):
         st.markdown(f'<div class="glass-card"><div class="card-header">BERKAS</div>{files_html}</div>', unsafe_allow_html=True)
 
 
-def render_public_view(users: list):
-    # Sync query params to state
+def render_public_view(data: dict):
     if "profile" in st.query_params:
         st.session_state.view_user_id = st.query_params["profile"]
     
     if st.session_state.view_user_id is None:
-        render_public_grid(users)
+        render_public_grid(data["users"], data["team_projects"])
     else:
-        u = next((x for x in users if x["id"] == st.session_state.view_user_id), None)
+        u = next((x for x in data["users"] if x["id"] == st.session_state.view_user_id), None)
         if u:
             render_public_detail(u)
         else:
@@ -716,7 +717,8 @@ def render_admin_panel(data: dict):
                 st.rerun()
         st.write("")
 
-    # User Selector (Master only)
+    # User Selector (Master only, for editing users)
+    target_user = None
     if is_master:
         options = {f"{u['name']} ({u['nim']})": u["id"] for u in data["users"]}
         c1, c2 = st.columns([1, 3])
@@ -725,25 +727,32 @@ def render_admin_panel(data: dict):
         with c2:
             selected_label = st.selectbox("Pilih Pengguna", list(options.keys()), label_visibility="collapsed")
             target_user_id = options[selected_label]
+        target_user = next(u for u in data["users"] if u["id"] == target_user_id)
     else:
-        target_user_id = current_user_id
-
-    target_user = next(u for u in data["users"] if u["id"] == target_user_id)
+        target_user = next(u for u in data["users"] if u["id"] == current_user_id)
 
     if st.session_state.flash:
         st.success(st.session_state.flash)
         st.session_state.flash = None
 
-    tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
-
-    with tab_edit:
-        render_edit_data_tab(target_user, data)
-    with tab_files:
-        render_files_tab(target_user, data)
-    with tab_pwd:
-        if is_master:
+    # Tabs
+    if is_master:
+        tab_edit, tab_proj, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Proyek", "Kelola Berkas", "Ubah Sandi"])
+        with tab_edit:
+            render_edit_data_tab(target_user, data)
+        with tab_proj:
+            render_team_projects_tab(data)
+        with tab_files:
+            render_files_tab(target_user, data)
+        with tab_pwd:
             render_reset_password_tab(target_user, data)
-        else:
+    else:
+        tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
+        with tab_edit:
+            render_edit_data_tab(target_user, data)
+        with tab_files:
+            render_files_tab(target_user, data)
+        with tab_pwd:
             render_change_password_tab(target_user, data)
 
 
@@ -756,8 +765,6 @@ def render_edit_data_tab(u: dict, data: dict):
         st.session_state[f"edu_list_{u['id']}"] = list(u.get("education") or [])
     if f"exp_list_{u['id']}" not in st.session_state:
         st.session_state[f"exp_list_{u['id']}"] = list(u.get("experience") or [])
-    if f"proj_list_{u['id']}" not in st.session_state:
-        st.session_state[f"proj_list_{u['id']}"] = list(u.get("otherProjects") or [])
 
     with st.form(f"edit_form_{key_base}"):
         # Foto Profile
@@ -845,29 +852,8 @@ def render_edit_data_tab(u: dict, data: dict):
 
         st.divider()
 
-        # Skills & Projects
+        # Skills
         skills_text = st.text_input("KEAHLIAN (PISAHKAN DENGAN KOMA)", value=", ".join(u.get("skills") or []), key=f"skills_{key_base}")
-        
-        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-top: 8px; margin-bottom: 8px;">Proyek</div>', unsafe_allow_html=True)
-        mp = u.get("mainProject") or {}
-        c1, c2 = st.columns(2)
-        with c1: mp_name = st.text_input("LINK PROYEK UTAMA (NAMA)", value=mp.get("name", ""), key=f"mpname_{key_base}")
-        with c2: mp_url = st.text_input("LINK PROYEK UTAMA (URL)", value=mp.get("url", ""), key=f"mpurl_{key_base}")
-
-        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Proyek Lainnya</div>', unsafe_allow_html=True)
-        proj_list = st.session_state[f"proj_list_{u['id']}"]
-        for i, proj in enumerate(proj_list):
-            cols = st.columns([4, 5, 1])
-            proj["name"] = cols[0].text_input(f"Nama Proyek_{i}", value=proj.get("name", ""), label_visibility="collapsed", placeholder="Nama Proyek", key=f"proj_name_{i}")
-            proj["url"] = cols[1].text_input(f"URL_{i}", value=proj.get("url", ""), label_visibility="collapsed", placeholder="URL Proyek", key=f"proj_url_{i}")
-            with cols[2]:
-                if st.form_submit_button("✕", key=f"del_proj_{i}"):
-                    proj_list.pop(i)
-                    st.rerun()
-        
-        if st.form_submit_button("+ Tambah Proyek Lainnya"):
-            proj_list.append({"name": "", "url": ""})
-            st.rerun()
 
         # Save Button
         st.divider()
@@ -885,18 +871,66 @@ def render_edit_data_tab(u: dict, data: dict):
         
         u["education"] = [e for e in edu_list if any(e.values())]
         u["experience"] = [e for e in exp_list if any(e.values())]
-        u["otherProjects"] = [p for p in proj_list if any(p.values())]
-        u["mainProject"] = {"name": mp_name.strip(), "url": mp_url.strip()}
         
         save_data(data)
         
         # Clear state to force reload from saved data
         del st.session_state[f"edu_list_{u['id']}"]
         del st.session_state[f"exp_list_{u['id']}"]
-        del st.session_state[f"proj_list_{u['id']}"]
         
         st.session_state.save_version += 1
         st.session_state.flash = "✅ Data berhasil disimpan."
+        st.session_state.scroll_to_top = True
+        st.rerun()
+
+
+def render_team_projects_tab(data: dict):
+    st.markdown("### Kelola Proyek")
+    st.caption("Proyek ini bersifat global dan akan tampil untuk seluruh anggota kelompok.")
+    
+    tp = data.get("team_projects") or {"main": {}, "others": []}
+    version = st.session_state.proj_version
+    key_base = f"proj_{version}"
+
+    if f"proj_list_{version}" not in st.session_state:
+        st.session_state[f"proj_list_{version}"] = list(tp.get("others") or [])
+
+    with st.form(f"proj_form_{key_base}"):
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Proyek Utama</div>', unsafe_allow_html=True)
+        mp = tp.get("main") or {}
+        c1, c2 = st.columns(2)
+        with c1: mp_name = st.text_input("NAMA PROYEK UTAMA", value=mp.get("name", ""), key=f"mpname_{key_base}")
+        with c2: mp_url = st.text_input("URL PROYEK UTAMA", value=mp.get("url", ""), key=f"mpurl_{key_base}")
+        
+        st.divider()
+        
+        st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Proyek Lainnya</div>', unsafe_allow_html=True)
+        proj_list = st.session_state[f"proj_list_{version}"]
+        for i, proj in enumerate(proj_list):
+            cols = st.columns([4, 5, 1])
+            proj["name"] = cols[0].text_input(f"Nama Proyek_{i}", value=proj.get("name", ""), label_visibility="collapsed", placeholder="Nama Proyek", key=f"proj_name_{i}")
+            proj["url"] = cols[1].text_input(f"URL_{i}", value=proj.get("url", ""), label_visibility="collapsed", placeholder="URL Proyek", key=f"proj_url_{i}")
+            with cols[2]:
+                if st.form_submit_button("✕", key=f"del_proj_{i}"):
+                    proj_list.pop(i)
+                    st.rerun()
+        
+        if st.form_submit_button("+ Tambah Proyek Lainnya"):
+            proj_list.append({"name": "", "url": ""})
+            st.rerun()
+
+        st.divider()
+        submitted = st.form_submit_button("Simpan Perubahan", type="primary", use_container_width=True)
+
+    if submitted:
+        tp["main"] = {"name": mp_name.strip(), "url": mp_url.strip()}
+        tp["others"] = [p for p in proj_list if any(p.values())]
+        data["team_projects"] = tp
+        save_data(data)
+        
+        del st.session_state[f"proj_list_{version}"]
+        st.session_state.proj_version += 1
+        st.session_state.flash = "✅ Data proyek berhasil disimpan."
         st.session_state.scroll_to_top = True
         st.rerun()
 
@@ -962,7 +996,6 @@ def render_files_tab(u: dict, data: dict):
                 if f.get("public_id"):
                     destroy_on_cloudinary(f.get("public_id"), "raw" if f.get("type") == "pdf" else "image")
                 
-                # Remove local file
                 if f.get("local_path"):
                     local_file = DATA_FILE.parent / f["local_path"]
                     if local_file.exists():
@@ -1016,4 +1049,4 @@ if st.session_state.logged_in_as:
 elif st.query_params.get("admin") == "1":
     render_login_page(data)
 else:
-    render_public_view(data["users"])
+    render_public_view(data)
