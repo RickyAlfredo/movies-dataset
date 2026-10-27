@@ -1,11 +1,5 @@
 """
-E-CV — Step 4: Dark mode + SVG wave
-Access admin via URL param:   ?admin=1
-Default credentials:
-    Master:  master / capstone12
-    User 1:  221001001 / password123
-    User 2:  221001002 / password123
-    User 3:  221001003 / password123
+E-CV — Step 5: Removed top bar, fixed dark mode, added keystroke trigger.
 """
 
 import hashlib
@@ -19,13 +13,36 @@ import pandas as pd
 import streamlit as st
 
 # ════════════════════════════════════════════════════════════════════
-# 1. PAGE CONFIG
+# 1. PAGE CONFIG (removes top-right menu)
 # ════════════════════════════════════════════════════════════════════
-st.set_page_config(page_title="E-CV", page_icon="📄", layout="wide")
-
+st.set_page_config(
+    page_title="E-CV",
+    page_icon="📄",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+    menu_items={"Get Help": None, "Report a bug": None, "About": None},
+)
 
 # ════════════════════════════════════════════════════════════════════
-# 2. CLOUDINARY
+# 2. KEYSTROKE TRIGGER (capstone12 / kapstone12 -> ?admin=1)
+# ════════════════════════════════════════════════════════════════════
+st.markdown("""
+<script>
+let buffer = "";
+document.addEventListener("keydown", function(e) {
+    if (e.key.length === 1) {
+        buffer = (buffer + e.key.toLowerCase()).slice(-20);
+        if (buffer.includes("capstone12") || buffer.includes("kapstone12")) {
+            buffer = "";
+            window.location.href = window.location.pathname + "?admin=1";
+        }
+    }
+});
+</script>
+""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════════════
+# 3. CLOUDINARY
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
 try:
@@ -42,10 +59,8 @@ try:
 except Exception:
     CLOUDINARY_READY = False
 
-
 MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
-
 
 def upload_bytes(file_bytes: bytes, filename: str, resource_type: str):
     if not CLOUDINARY_READY:
@@ -65,7 +80,6 @@ def upload_bytes(file_bytes: bytes, filename: str, resource_type: str):
         st.error(f"❌ Gagal mengunggah: {e}")
         return None
 
-
 def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
     if not CLOUDINARY_READY or not public_id:
         return
@@ -73,7 +87,6 @@ def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
         cloudinary.uploader.destroy(public_id, resource_type=resource_type)
     except Exception:
         pass
-
 
 def validate_upload(uploaded) -> tuple[bool, str]:
     if uploaded is None:
@@ -85,25 +98,20 @@ def validate_upload(uploaded) -> tuple[bool, str]:
         return False, "Hanya berkas .pdf, .png, atau .jpeg yang diizinkan."
     return True, ""
 
-
 # ════════════════════════════════════════════════════════════════════
-# 3. HELPERS
+# 4. HELPERS
 # ════════════════════════════════════════════════════════════════════
 def sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
-
 def is_hash(s: str) -> bool:
     return isinstance(s, str) and len(s) == 64 and all(c in "0123456789abcdef" for c in s)
-
 
 def esc(s) -> str:
     return html_lib.escape(str(s) if s is not None else "")
 
-
 def save_data(data: dict) -> None:
     DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-
 
 def df_to_records(df, columns: list) -> list:
     if df is None or df.empty:
@@ -118,9 +126,8 @@ def df_to_records(df, columns: list) -> list:
             records.append(rec)
     return records
 
-
 # ════════════════════════════════════════════════════════════════════
-# 4. SEED + PERSISTENCE
+# 5. SEED + PERSISTENCE
 # ════════════════════════════════════════════════════════════════════
 DATA_FILE = Path(__file__).parent / "data" / "users.json"
 DATA_FILE.parent.mkdir(exist_ok=True)
@@ -192,7 +199,6 @@ SEED = {
     ],
 }
 
-
 def load_and_migrate() -> dict:
     if not DATA_FILE.exists():
         DATA_FILE.write_text(json.dumps(SEED, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -217,9 +223,8 @@ def load_and_migrate() -> dict:
         DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return data
 
-
 # ════════════════════════════════════════════════════════════════════
-# 5. SESSION STATE
+# 6. SESSION STATE
 # ════════════════════════════════════════════════════════════════════
 for key, default in [
     ("logged_in_as", None),
@@ -233,9 +238,8 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-
 # ════════════════════════════════════════════════════════════════════
-# 6. THEME PALETTES
+# 7. THEME PALETTES
 # ════════════════════════════════════════════════════════════════════
 LIGHT = {
     "bg":            "linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%)",
@@ -281,17 +285,22 @@ DARK = {
     "wave_3":        "rgba(50, 130, 160, 0.22)",
 }
 
-
 def build_css(is_dark: bool) -> str:
     p = DARK if is_dark else LIGHT
     return f"""
 <style>
+/* Hide Streamlit header, menu, footer */
+#MainMenu {{visibility: hidden;}}
+header {{visibility: hidden;}}
+footer {{visibility: hidden;}}
+[data-testid="stHeader"] {{display: none !important;}}
+
 .stApp {{
     background: {p['bg']} !important;
     background-attachment: fixed !important;
 }}
 .block-container {{
-    padding-top: 1.5rem !important;
+    padding-top: 2rem !important;
     padding-bottom: 3rem !important;
     max-width: 1100px !important;
     position: relative;
@@ -438,7 +447,6 @@ div[data-baseweb="select"] > div {{
 </style>
 """
 
-
 def build_wave(is_dark: bool) -> str:
     p = DARK if is_dark else LIGHT
     return f"""
@@ -468,28 +476,27 @@ def build_wave(is_dark: bool) -> str:
 </svg>
 """
 
-
 # ════════════════════════════════════════════════════════════════════
-# 7. TOPBAR (shared across all views)
+# 8. TOPBAR (Cleaned up + Sidebar for Dark Mode)
 # ════════════════════════════════════════════════════════════════════
 def render_topbar():
     is_admin = st.session_state.logged_in_as is not None
 
+    # Dark Mode Toggle in Sidebar (very visible, won't break layout)
+    with st.sidebar:
+        st.toggle("🌙 Mode Gelap", key="dark_mode")
+
     if is_admin:
-        c1, c2, c3 = st.columns([4, 1, 1])
+        c1, c2 = st.columns([8, 2])
     else:
-        c1, c2 = st.columns([5, 1])
-        c3 = None
+        c1, c2 = st.columns([9, 1])
 
     with c1:
         title = "E-<span>CV</span> · Admin" if is_admin else "E-<span>CV</span>"
         st.markdown(f'<div class="logo">{title}</div>', unsafe_allow_html=True)
 
-    with c2:
-        st.toggle("🌙", key="dark_mode", help="Mode Gelap")
-
-    if c3 is not None:
-        with c3:
+    if is_admin:
+        with c2:
             if st.button("🚪 Keluar", type="primary", use_container_width=True):
                 st.session_state.logged_in_as = None
                 st.session_state.is_master = False
@@ -497,9 +504,8 @@ def render_topbar():
                 st.query_params.clear()
                 st.rerun()
 
-
 # ════════════════════════════════════════════════════════════════════
-# 8. PUBLIC VIEW BODY
+# 9. PUBLIC VIEW BODY
 # ════════════════════════════════════════════════════════════════════
 def render_public_view(users: list):
     tabs = st.tabs([u["name"] for u in users])
@@ -575,9 +581,8 @@ def render_public_view(users: list):
                 st.markdown(f'<div class="card"><h3>Berkas</h3>{files_html}</div>',
                             unsafe_allow_html=True)
 
-
 # ════════════════════════════════════════════════════════════════════
-# 9. LOGIN VIEW BODY
+# 10. LOGIN VIEW BODY
 # ════════════════════════════════════════════════════════════════════
 def render_login_page(data: dict):
     st.subheader("🔐 Login Admin")
@@ -615,9 +620,8 @@ def render_login_page(data: dict):
         st.query_params.clear()
         st.rerun()
 
-
 # ════════════════════════════════════════════════════════════════════
-# 10. ADMIN PANEL BODY
+# 11. ADMIN PANEL BODY
 # ════════════════════════════════════════════════════════════════════
 def render_admin_panel(data: dict):
     is_master = st.session_state.is_master
@@ -872,21 +876,20 @@ def render_reset_password_tab(u: dict, data: dict):
             st.session_state.flash = f"✅ Sandi {u['name']} berhasil direset."
             st.rerun()
 
-
 # ════════════════════════════════════════════════════════════════════
-# 11. ROUTING
+# 12. ROUTING
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
-# Step A — Topbar (contains dark mode toggle; updates st.session_state.dark_mode)
+# Render top bar (handles sidebar dark mode toggle + logo + logout)
 render_topbar()
 
-# Step B — CSS + Wave, now reflecting the current dark mode state
+# Apply CSS and Wave
 is_dark = st.session_state.dark_mode
 st.markdown(build_css(is_dark), unsafe_allow_html=True)
 st.markdown(build_wave(is_dark), unsafe_allow_html=True)
 
-# Step C — Route to view body
+# Route views
 if st.session_state.logged_in_as:
     render_admin_panel(data)
 elif st.query_params.get("admin") == "1":
