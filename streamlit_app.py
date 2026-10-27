@@ -1,5 +1,5 @@
 """
-E-CV — Step 1: Public view + Hidden Admin (login + edit data + passwords)
+E-CV — Step 2: Cloudinary file uploads + profile pictures.
 Access admin via URL param:   ?admin=1
 Default credentials:
     Master:  master / capstone12
@@ -11,7 +11,9 @@ Default credentials:
 import hashlib
 import html as html_lib
 import json
+from io import BytesIO
 from pathlib import Path
+import time
 
 import pandas as pd
 import streamlit as st
@@ -23,7 +25,72 @@ st.set_page_config(page_title="E-CV", page_icon="📄", layout="wide")
 
 
 # ════════════════════════════════════════════════════════════════════
-# 2. HELPERS
+# 2. CLOUDINARY SETUP (graceful, works even if unconfigured)
+# ════════════════════════════════════════════════════════════════════
+CLOUDINARY_READY = False
+try:
+    import cloudinary
+    import cloudinary.uploader
+
+    cloudinary.config(
+        cloud_name=st.secrets["cloudinary"]["cloud_name"],
+        api_key=st.secrets["cloudinary"]["api_key"],
+        api_secret=st.secrets["cloudinary"]["api_secret"],
+        secure=True,
+    )
+    CLOUDINARY_READY = True
+except Exception as _cloud_err:
+    CLOUDINARY_READY = False
+
+
+MAX_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
+ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
+
+
+def upload_bytes(file_bytes: bytes, filename: str, resource_type: str) -> dict | None:
+    """Upload raw bytes to Cloudinary. Returns {url, public_id} or None."""
+    if not CLOUDINARY_READY:
+        st.error("❌ Cloudinary belum dikonfigurasi. Periksa `.streamlit/secrets.toml`.")
+        return None
+    base = filename.rsplit(".", 1)[0].replace(" ", "_")[:60]
+    unique_id = f"ecv_{int(time.time())}_{base}"
+    try:
+        result = cloudinary.uploader.upload(
+            BytesIO(file_bytes),
+            resource_type=resource_type,
+            folder="ecv",
+            public_id=unique_id,
+        )
+        return {"url": result["secure_url"], "public_id": result["public_id"]}
+    except Exception as e:
+        st.error(f"❌ Gagal mengunggah ke Cloudinary: {e}")
+        return None
+
+
+def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
+    """Best-effort delete from Cloudinary."""
+    if not CLOUDINARY_READY or not public_id:
+        return
+    try:
+        cloudinary.uploader.destroy(public_id, resource_type=resource_type)
+    except Exception:
+        pass
+
+
+def validate_upload(uploaded) -> tuple[bool, str]:
+    """Return (ok, error_message)."""
+    if uploaded is None:
+        return False, "Tidak ada berkas."
+    if uploaded.size > MAX_FILE_BYTES:
+        mb = uploaded.size / (1024 * 1024)
+        return False, f"Ukuran berkas {mb:.1f} MB melebihi 5 MB."
+    if uploaded.type not in ALLOWED_MIMES:
+        return False, "Hanya berkas .pdf, .png, atau .jpeg yang diizinkan."
+    return True, ""
+
+
+# ════════════════════════════════════════════════════════════════════
+# 3. HELPERS
 # ════════════════════════════════════════════════════════════════════
 def sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
@@ -42,7 +109,6 @@ def save_data(data: dict) -> None:
 
 
 def df_to_records(df, columns: list) -> list:
-    """Convert a dataframe (from st.data_editor) into a list of dicts, skipping empty rows."""
     if df is None or df.empty:
         return []
     records = []
@@ -57,7 +123,7 @@ def df_to_records(df, columns: list) -> list:
 
 
 # ════════════════════════════════════════════════════════════════════
-# 3. SEED + PERSISTENCE
+# 4. SEED + PERSISTENCE
 # ════════════════════════════════════════════════════════════════════
 DATA_FILE = Path(__file__).parent / "data" / "users.json"
 DATA_FILE.parent.mkdir(exist_ok=True)
@@ -69,7 +135,7 @@ SEED = {
             "id": "user1", "name": "Ahmad Fauzi", "nim": "221001001",
             "email": "ahmad.fauzi@example.com", "phone": "+62 812-3456-7890",
             "bio": "Mahasiswa Teknik Informatika yang berfokus pada pengembangan web dan mobile.",
-            "password": "password123",
+            "password": "password123", "profilePicture": "",
             "education": [
                 {"degree": "S1 Teknik Informatika", "institution": "Universitas Indonesia", "year": "2022 - Sekarang"},
                 {"degree": "SMA IPA", "institution": "SMA Negeri 1 Jakarta", "year": "2019 - 2022"},
@@ -92,7 +158,7 @@ SEED = {
             "id": "user2", "name": "Siti Rahma", "nim": "221001002",
             "email": "siti.rahma@example.com", "phone": "+62 813-9876-5432",
             "bio": "Mahasiswi Sistem Informasi yang tertarik pada analisis data dan UI/UX design.",
-            "password": "password123",
+            "password": "password123", "profilePicture": "",
             "education": [
                 {"degree": "S1 Sistem Informasi", "institution": "Institut Teknologi Bandung", "year": "2022 - Sekarang"},
             ],
@@ -111,7 +177,7 @@ SEED = {
             "id": "user3", "name": "Budi Santoso", "nim": "221001003",
             "email": "budi.santoso@example.com", "phone": "+62 857-1111-2222",
             "bio": "Mahasiswa Teknik Komputer yang berfokus pada embedded systems dan IoT.",
-            "password": "password123",
+            "password": "password123", "profilePicture": "",
             "education": [
                 {"degree": "S1 Teknik Komputer", "institution": "Universitas Gadjah Mada", "year": "2021 - Sekarang"},
             ],
@@ -131,20 +197,16 @@ SEED = {
 
 
 def load_and_migrate() -> dict:
-    """Load users.json, creating and/or hashing plaintext passwords as needed."""
     if not DATA_FILE.exists():
         DATA_FILE.write_text(json.dumps(SEED, indent=2, ensure_ascii=False), encoding="utf-8")
-
     data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     changed = False
-
     if "masterPassword" not in data:
         data["masterPassword"] = "capstone12"
         changed = True
     if not is_hash(data["masterPassword"]):
         data["masterPassword"] = sha256(data["masterPassword"])
         changed = True
-
     for u in data.get("users", []):
         if "password" not in u:
             u["password"] = "password123"
@@ -152,33 +214,34 @@ def load_and_migrate() -> dict:
         if not is_hash(u["password"]):
             u["password"] = sha256(u["password"])
             changed = True
-
+        u.setdefault("profilePicture", "")
+        u.setdefault("files", [])
     if changed:
         DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-
     return data
 
 
 # ════════════════════════════════════════════════════════════════════
-# 4. SESSION STATE
+# 5. SESSION STATE
 # ════════════════════════════════════════════════════════════════════
-if "logged_in_as" not in st.session_state:
-    st.session_state.logged_in_as = None
-if "is_master" not in st.session_state:
-    st.session_state.is_master = False
-if "save_version" not in st.session_state:
-    st.session_state.save_version = 0
-if "flash" not in st.session_state:
-    st.session_state.flash = None
+for key, default in [
+    ("logged_in_as", None),
+    ("is_master", False),
+    ("save_version", 0),
+    ("flash", None),
+    ("file_upload_version", 0),
+    ("avatar_upload_version", 0),
+]:
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 
 # ════════════════════════════════════════════════════════════════════
-# 5. GLOBAL CSS (applies to both public and admin)
+# 6. GLOBAL CSS
 # ════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem; padding-bottom: 3rem; max-width: 1100px; }
-
     .logo { font-size: 26px; font-weight: 800; margin-bottom: 18px; color: #1a2233; }
     .logo span { color: #3b6fd4; }
 
@@ -187,12 +250,16 @@ st.markdown("""
         padding: 26px 22px; text-align: center;
         box-shadow: 0 2px 10px rgba(20,30,60,0.05);
     }
-    .avatar {
+    .avatar, .avatar-img {
         width: 100px; height: 100px; border-radius: 50%;
+        margin: 0 auto 16px; display: block;
+    }
+    .avatar {
         background: #d4e2f7; color: #3b6fd4;
         display: flex; align-items: center; justify-content: center;
-        font-size: 38px; font-weight: 700; margin: 0 auto 16px;
+        font-size: 38px; font-weight: 700;
     }
+    .avatar-img { object-fit: cover; border: 3px solid #d4e2f7; }
     .p-name { font-size: 20px; font-weight: 700; color: #1a2233; margin: 0 0 4px; }
     .p-nim  { font-size: 13px; color: #6b7a92; margin-bottom: 16px; }
     .p-bio  { font-size: 13px; color: #46536b; line-height: 1.55; margin-bottom: 16px; text-align: left; }
@@ -242,7 +309,7 @@ st.markdown("""
 
 
 # ════════════════════════════════════════════════════════════════════
-# 6. PUBLIC VIEW
+# 7. PUBLIC VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_public_view(users: list):
     st.markdown('<div class="logo">E-<span>CV</span></div>', unsafe_allow_html=True)
@@ -253,12 +320,15 @@ def render_public_view(users: list):
         with tab:
             col_left, col_right = st.columns([1, 2.4], gap="large")
 
-            # ── LEFT: Profile
             with col_left:
-                initials = esc((u["name"] or "?")[0])
+                if u.get("profilePicture"):
+                    avatar_html = f'<img class="avatar-img" src="{esc(u["profilePicture"])}" alt="avatar" />'
+                else:
+                    avatar_html = f'<div class="avatar">{esc((u["name"] or "?")[0])}</div>'
+
                 st.markdown(f"""
                     <div class="profile-card">
-                        <div class="avatar">{initials}</div>
+                        {avatar_html}
                         <div class="p-name">{esc(u['name'])}</div>
                         <div class="p-nim">NIM {esc(u['nim'])}</div>
                         <div class="p-bio">{esc(u['bio'])}</div>
@@ -267,7 +337,6 @@ def render_public_view(users: list):
                     </div>
                 """, unsafe_allow_html=True)
 
-            # ── RIGHT: Content
             with col_right:
                 edu_html = "".join(
                     f'<div class="item"><div class="t">{esc(e.get("degree", ""))}</div>'
@@ -320,7 +389,7 @@ def render_public_view(users: list):
 
 
 # ════════════════════════════════════════════════════════════════════
-# 7. LOGIN VIEW
+# 8. LOGIN VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_login_page(data: dict):
     st.markdown('<div class="logo">E-<span>CV</span> · Admin</div>', unsafe_allow_html=True)
@@ -361,13 +430,12 @@ def render_login_page(data: dict):
 
 
 # ════════════════════════════════════════════════════════════════════
-# 8. ADMIN PANEL
+# 9. ADMIN PANEL
 # ════════════════════════════════════════════════════════════════════
 def render_admin_panel(data: dict):
     is_master = st.session_state.is_master
     current_user_id = st.session_state.logged_in_as
 
-    # Header
     col1, col2 = st.columns([4, 1])
     with col1:
         st.title("🔐 Admin Panel")
@@ -376,6 +444,8 @@ def render_admin_panel(data: dict):
         else:
             cu = next(u for u in data["users"] if u["id"] == current_user_id)
             st.caption(f"Masuk sebagai **{cu['name']}** ({cu['nim']})")
+        if not CLOUDINARY_READY:
+            st.warning("⚠️ Cloudinary belum dikonfigurasi — unggah berkas dinonaktifkan.")
     with col2:
         if st.button("🚪 Keluar", type="primary", use_container_width=True):
             st.session_state.logged_in_as = None
@@ -384,14 +454,12 @@ def render_admin_panel(data: dict):
             st.query_params.clear()
             st.rerun()
 
-    # Flash message
     if st.session_state.flash:
         st.success(st.session_state.flash)
         st.session_state.flash = None
 
     st.divider()
 
-    # Target selector (master only)
     if is_master:
         options = {f"{u['name']} ({u['nim']})": u["id"] for u in data["users"]}
         selected_label = st.selectbox("Pilih pengguna yang akan dikelola", list(options.keys()))
@@ -401,11 +469,10 @@ def render_admin_panel(data: dict):
 
     target_user = next(u for u in data["users"] if u["id"] == target_user_id)
 
-    # Tabs
     if is_master:
-        tab_labels = ["📝 Edit Data", "🔄 Reset Sandi"]
+        tab_labels = ["📝 Edit Data", "📁 Berkas", "🔄 Reset Sandi"]
     else:
-        tab_labels = ["📝 Edit Data", "🔑 Ubah Sandi"]
+        tab_labels = ["📝 Edit Data", "📁 Berkas", "🔑 Ubah Sandi"]
 
     tabs = st.tabs(tab_labels)
 
@@ -413,14 +480,63 @@ def render_admin_panel(data: dict):
         render_edit_data_tab(target_user, data)
 
     with tabs[1]:
+        render_files_tab(target_user, data)
+
+    with tabs[2]:
         if is_master:
             render_reset_password_tab(target_user, data)
         else:
             render_change_password_tab(target_user, data)
 
 
-# ── Edit Data tab ────────────────────────────────────────────────
+# ── Edit Data tab (with avatar section) ─────────────────────────
 def render_edit_data_tab(u: dict, data: dict):
+    # ── Foto Profil ──────
+    st.markdown("#### Foto Profil")
+    av_col1, av_col2 = st.columns([1, 3])
+    with av_col1:
+        if u.get("profilePicture"):
+            st.image(u["profilePicture"], width=120)
+        else:
+            initials = esc((u["name"] or "?")[0])
+            st.markdown(
+                f'<div style="width:120px;height:120px;border-radius:50%;'
+                f'background:#d4e2f7;color:#3b6fd4;display:flex;align-items:center;'
+                f'justify-content:center;font-size:44px;font-weight:700;">{initials}</div>',
+                unsafe_allow_html=True,
+            )
+    with av_col2:
+        av_key = f"avatar_uploader_{u['id']}_{st.session_state.avatar_upload_version}"
+        avatar_file = st.file_uploader(
+            "Unggah foto profil (.png / .jpeg · maks 5 MB)",
+            type=["png", "jpeg", "jpg"],
+            key=av_key,
+            disabled=not CLOUDINARY_READY,
+        )
+        if avatar_file is not None:
+            ok, msg = validate_upload(avatar_file)
+            if not ok:
+                st.error(f"❌ {msg}")
+            else:
+                if st.button("⬆️ Unggah Foto Profil", key=f"av_btn_{av_key}", type="primary"):
+                    result = upload_bytes(avatar_file.getvalue(), avatar_file.name, "image")
+                    if result:
+                        u["profilePicture"] = result["url"]
+                        save_data(data)
+                        st.session_state.avatar_upload_version += 1
+                        st.session_state.flash = "✅ Foto profil berhasil diperbarui."
+                        st.rerun()
+        if u.get("profilePicture"):
+            if st.button("🗑️ Hapus Foto Profil", key=f"av_del_{av_key}"):
+                u["profilePicture"] = ""
+                save_data(data)
+                st.session_state.avatar_upload_version += 1
+                st.session_state.flash = "✅ Foto profil dihapus."
+                st.rerun()
+
+    st.divider()
+
+    # ── Main form ──────
     version = st.session_state.save_version
     key_base = f"{u['id']}_{version}"
 
@@ -443,21 +559,13 @@ def render_edit_data_tab(u: dict, data: dict):
 
         st.markdown("#### Pendidikan")
         edu_df = pd.DataFrame(u.get("education") or [], columns=["degree", "institution", "year"])
-        edited_edu = st.data_editor(
-            edu_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key=f"edu_editor_{key_base}",
-        )
+        edited_edu = st.data_editor(edu_df, num_rows="dynamic", use_container_width=True,
+                                    key=f"edu_editor_{key_base}")
 
         st.markdown("#### Pengalaman")
         exp_df = pd.DataFrame(u.get("experience") or [], columns=["role", "company", "year", "description"])
-        edited_exp = st.data_editor(
-            exp_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key=f"exp_editor_{key_base}",
-        )
+        edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True,
+                                    key=f"exp_editor_{key_base}")
 
         st.markdown("#### Proyek Utama")
         mp = u.get("mainProject") or {}
@@ -469,16 +577,10 @@ def render_edit_data_tab(u: dict, data: dict):
 
         st.markdown("#### Proyek Lainnya")
         proj_df = pd.DataFrame(u.get("otherProjects") or [], columns=["name", "url"])
-        edited_proj = st.data_editor(
-            proj_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key=f"proj_editor_{key_base}",
-        )
+        edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True,
+                                     key=f"proj_editor_{key_base}")
 
-        submitted = st.form_submit_button(
-            "💾 Simpan Perubahan", type="primary", use_container_width=True
-        )
+        submitted = st.form_submit_button("💾 Simpan Perubahan", type="primary", use_container_width=True)
 
     if submitted:
         u["name"] = name.strip()
@@ -491,14 +593,75 @@ def render_edit_data_tab(u: dict, data: dict):
         u["experience"] = df_to_records(edited_exp, ["role", "company", "year", "description"])
         u["mainProject"] = {"name": mp_name.strip(), "url": mp_url.strip()}
         u["otherProjects"] = df_to_records(edited_proj, ["name", "url"])
-
         save_data(data)
         st.session_state.save_version += 1
         st.session_state.flash = "✅ Data berhasil disimpan."
         st.rerun()
 
 
-# ── Change Password tab (non-master) ─────────────────────────────
+# ── Berkas tab ──────────────────────────────────────────────────
+def render_files_tab(u: dict, data: dict):
+    st.markdown("#### Unggah Berkas Baru")
+    st.caption("Hanya `.pdf`, `.png`, `.jpeg` · maksimal 5 MB per berkas.")
+
+    fu_key = f"file_uploader_{u['id']}_{st.session_state.file_upload_version}"
+    new_file = st.file_uploader(
+        "Pilih berkas",
+        type=["pdf", "png", "jpeg", "jpg"],
+        key=fu_key,
+        disabled=not CLOUDINARY_READY,
+    )
+
+    if new_file is not None:
+        ok, msg = validate_upload(new_file)
+        if not ok:
+            st.error(f"❌ {msg}")
+        else:
+            st.info(f"📎 **{new_file.name}** · {new_file.size / 1024:.1f} KB")
+            if st.button("⬆️ Unggah Berkas", type="primary", key=f"fu_btn_{fu_key}"):
+                resource_type = "raw" if new_file.type == "application/pdf" else "image"
+                result = upload_bytes(new_file.getvalue(), new_file.name, resource_type)
+                if result:
+                    u["files"].append({
+                        "name": new_file.name,
+                        "url": result["url"],
+                        "public_id": result["public_id"],
+                        "type": "pdf" if new_file.type == "application/pdf" else "image",
+                    })
+                    save_data(data)
+                    st.session_state.file_upload_version += 1
+                    st.session_state.flash = f"✅ Berkas '{new_file.name}' berhasil diunggah."
+                    st.rerun()
+
+    st.divider()
+    st.markdown(f"#### Berkas Terdaftar ({len(u.get('files') or [])})")
+
+    files = u.get("files") or []
+    if not files:
+        st.markdown('<div class="empty">Belum ada berkas.</div>', unsafe_allow_html=True)
+        return
+
+    for i, f in enumerate(files):
+        col1, col2, col3 = st.columns([4, 1.2, 1])
+        with col1:
+            icon = "📄" if f.get("type") == "pdf" else "🖼️"
+            st.markdown(f"{icon} **{esc(f.get('name', 'tanpa nama'))}**")
+        with col2:
+            st.link_button("👁️ Lihat", f.get("url", "#"), use_container_width=True)
+        with col3:
+            unique_key = f"del_{u['id']}_{i}_{f.get('public_id', f.get('name', 'x'))}"
+            if st.button("🗑️ Hapus", key=unique_key, use_container_width=True):
+                destroy_on_cloudinary(
+                    f.get("public_id", ""),
+                    "raw" if f.get("type") == "pdf" else "image",
+                )
+                u["files"].remove(f)
+                save_data(data)
+                st.session_state.flash = f"✅ Berkas '{f.get('name')}' dihapus."
+                st.rerun()
+
+
+# ── Change Password (non-master) ────────────────────────────────
 def render_change_password_tab(u: dict, data: dict):
     st.markdown("#### Ubah Sandi Anda")
     st.caption("Minimal 6 karakter. Sandi lama wajib dimasukkan untuk verifikasi.")
@@ -523,7 +686,7 @@ def render_change_password_tab(u: dict, data: dict):
             st.rerun()
 
 
-# ── Reset Password tab (master only) ─────────────────────────────
+# ── Reset Password (master) ─────────────────────────────────────
 def render_reset_password_tab(u: dict, data: dict):
     st.markdown(f"#### Reset Sandi: {u['name']} ({u['nim']})")
     st.caption("Sebagai Master Admin, Anda dapat mengganti sandi pengguna tanpa perlu sandi lama.")
@@ -546,7 +709,7 @@ def render_reset_password_tab(u: dict, data: dict):
 
 
 # ════════════════════════════════════════════════════════════════════
-# 9. ROUTING
+# 10. ROUTING
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
