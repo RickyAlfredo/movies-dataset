@@ -1,5 +1,11 @@
 """
-E-CV — Step 7: UI toggles, dynamic icons, fixed keystrokes.
+E-CV — Step 8: Default Dark Mode, removed keystroke triggers.
+Access admin via URL param:   ?admin=1
+Default credentials:
+    Master:  master / capstone12
+    User 1:  221001001 / password123
+    User 2:  221001002 / password123
+    User 3:  221001003 / password123
 """
 
 import hashlib
@@ -11,7 +17,6 @@ import time
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 # ════════════════════════════════════════════════════════════════════
 # 1. PAGE CONFIG
@@ -25,65 +30,7 @@ st.set_page_config(
 )
 
 # ════════════════════════════════════════════════════════════════════
-# 2. KEYBOARD SHORTCUTS (Robust iframe injection)
-# ════════════════════════════════════════════════════════════════════
-components.html("""
-<script>
-(function() {
-    function init() {
-        try {
-            // Find the main Streamlit window
-            let doc = window.parent.document;
-            if (!doc.querySelector('.stApp')) {
-                doc = window.parent.parent.document;
-            }
-            
-            if (!doc || !doc.querySelector('.stApp')) {
-                setTimeout(init, 500);
-                return;
-            }
-
-            let buffer = "";
-            doc.addEventListener("keydown", function(e) {
-                if (e.key.length === 1) {
-                    buffer = (buffer + e.key.toLowerCase()).slice(-20);
-                    
-                    // 1. Admin login (kapstone12 or capstone12)
-                    if (buffer.includes("kapstone12") || buffer.includes("capstone12")) {
-                        buffer = "";
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const url = new URL(window.parent.location.href);
-                        url.searchParams.set("admin", "1");
-                        window.parent.location.href = url.href;
-                    }
-                    
-                    // 2. Toggle Streamlit UI (admin12)
-                    if (buffer.includes("admin12")) {
-                        buffer = "";
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const url = new URL(window.parent.location.href);
-                        if (url.searchParams.has("show_ui")) {
-                            url.searchParams.delete("show_ui");
-                        } else {
-                            url.searchParams.set("show_ui", "1");
-                        }
-                        window.parent.location.href = url.href;
-                    }
-                }
-            }, true);
-        } catch (e) {
-            setTimeout(init, 500);
-        }
-    }
-    init();
-})();
-</script>
-""", height=0, width=0)
-
-# ════════════════════════════════════════════════════════════════════
-# 3. CLOUDINARY
+# 2. CLOUDINARY
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
 try:
@@ -140,7 +87,7 @@ def validate_upload(uploaded) -> tuple[bool, str]:
     return True, ""
 
 # ════════════════════════════════════════════════════════════════════
-# 4. HELPERS
+# 3. HELPERS
 # ════════════════════════════════════════════════════════════════════
 def sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
@@ -168,7 +115,7 @@ def df_to_records(df, columns: list) -> list:
     return records
 
 # ════════════════════════════════════════════════════════════════════
-# 5. SEED + PERSISTENCE
+# 4. SEED + PERSISTENCE
 # ════════════════════════════════════════════════════════════════════
 DATA_FILE = Path(__file__).parent / "data" / "users.json"
 DATA_FILE.parent.mkdir(exist_ok=True)
@@ -265,7 +212,7 @@ def load_and_migrate() -> dict:
     return data
 
 # ════════════════════════════════════════════════════════════════════
-# 6. SESSION STATE
+# 5. SESSION STATE
 # ════════════════════════════════════════════════════════════════════
 for key, default in [
     ("logged_in_as", None),
@@ -274,13 +221,13 @@ for key, default in [
     ("flash", None),
     ("file_upload_version", 0),
     ("avatar_upload_version", 0),
-    ("dark_mode", False),
+    ("dark_mode", True),  # <--- Default is now DARK mode
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 # ════════════════════════════════════════════════════════════════════
-# 7. THEME PALETTES
+# 6. THEME PALETTES
 # ════════════════════════════════════════════════════════════════════
 LIGHT = {
     "bg":            "#f4f7f6",
@@ -329,9 +276,8 @@ DARK = {
 def build_css(is_dark: bool) -> str:
     p = DARK if is_dark else LIGHT
     
-    # Check if the user typed admin12 to show the UI
-    show_ui = st.query_params.get("show_ui") == "1"
-    hide_ui_css = "" if show_ui else """
+    # Always hide the Streamlit header, manage app button, etc.
+    hide_ui_css = """
     header[data-testid="stHeader"], #MainMenu, footer, [data-testid="stStatusWidget"] {
         display: none !important;
         visibility: hidden !important;
@@ -532,7 +478,7 @@ def build_wave(is_dark: bool) -> str:
 """
 
 # ════════════════════════════════════════════════════════════════════
-# 8. TOPBAR
+# 7. TOPBAR
 # ════════════════════════════════════════════════════════════════════
 def render_topbar():
     is_admin = st.session_state.logged_in_as is not None
@@ -562,7 +508,7 @@ def render_topbar():
                 st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
-# 9. PUBLIC VIEW
+# 8. PUBLIC VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_public_view(users: list):
     tabs = st.tabs([u["name"] for u in users])
@@ -639,7 +585,7 @@ def render_public_view(users: list):
                             unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════
-# 10. LOGIN VIEW
+# 9. LOGIN VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_login_page(data: dict):
     st.subheader("🔐 Login Admin")
@@ -678,7 +624,7 @@ def render_login_page(data: dict):
         st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
-# 11. ADMIN PANEL
+# 10. ADMIN PANEL
 # ════════════════════════════════════════════════════════════════════
 def render_admin_panel(data: dict):
     is_master = st.session_state.is_master
@@ -934,14 +880,14 @@ def render_reset_password_tab(u: dict, data: dict):
             st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
-# 12. ROUTING
+# 11. ROUTING
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
-# Render topbar
+# Render topbar with toggle
 render_topbar()
 
-# Apply exact colors and wave
+# Apply CSS and wave based on dark mode state
 is_dark = st.session_state.dark_mode
 st.markdown(build_css(is_dark), unsafe_allow_html=True)
 st.markdown(build_wave(is_dark), unsafe_allow_html=True)
