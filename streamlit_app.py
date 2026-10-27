@@ -106,7 +106,7 @@ except Exception:
 MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
-# Set path specifically to the workspace folder
+# Set path specifically to the workspace folder as requested
 BASE_DIR = Path("/workspaces/movies-dataset")
 if not BASE_DIR.exists():
     BASE_DIR = Path(__file__).parent
@@ -492,7 +492,7 @@ def build_wave() -> str:
 # ════════════════════════════════════════════════════════════════════
 def render_public_grid(users: list):
     st.markdown('<h1 class="title-main">E-CV Kelompok</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle-main">Silakan pilih profil di bawah ini untuk melihat detail.</p>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle-main">Silakan klik pada kartu profil di bawah ini untuk melihat detail.</p>', unsafe_allow_html=True)
 
     cols = st.columns(3, gap="large")
     for idx, u in enumerate(users):
@@ -509,25 +509,47 @@ def render_public_grid(users: list):
             
             contact_html = "".join(contacts)
 
+            # Make the entire card a clickable link that updates the query param
             st.markdown(f"""
-                <div class="glass-card" style="text-align: center; height: 100%;">
-                    {avatar_html}
-                    <div class="profile-name">{esc(u['name'])}</div>
-                    <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
-                    <div class="profile-nim">NIM: {esc(u['nim'])}</div>
-                    <div style="text-align: left; margin-top: 16px;">
-                        <div class="card-header" style="font-size: 0.75rem;">KONTAK</div>
-                        {contact_html}
+                <a href="?profile={u['id']}" target="_self" style="text-decoration: none; color: inherit; display: block;">
+                    <div class="glass-card" style="text-align: center; height: 100%; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        {avatar_html}
+                        <div class="profile-name">{esc(u['name'])}</div>
+                        <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
+                        <div class="profile-nim">NIM: {esc(u['nim'])}</div>
+                        <div style="text-align: left; margin-top: 16px;">
+                            <div class="card-header" style="font-size: 0.75rem;">KONTAK</div>
+                            {contact_html}
+                        </div>
                     </div>
-                </div>
+                </a>
             """, unsafe_allow_html=True)
 
-            if st.button("Lihat Profil Lengkap", key=f"btn_view_{u['id']}", use_container_width=True):
-                st.session_state.view_user_id = u['id']
-                st.rerun()
+    # --- MOVED PROJECTS SECTION ---
+    st.markdown('<h2 class="title-main" style="font-size: 2rem; margin-top: 40px;">Kumpulan Proyek</h2>', unsafe_allow_html=True)
+    p_col1, p_col2 = st.columns(2, gap="large")
+    
+    with p_col1:
+        st.markdown('<div class="glass-card" style="height: 100%;"><div class="card-header">PROYEK UTAMA</div>', unsafe_allow_html=True)
+        for u in users:
+            mp = u.get("mainProject") or {}
+            if mp.get("url"):
+                st.markdown(f'<a href="{esc(mp.get("url"))}" target="_blank" class="btn-link">🔗 {esc(mp.get("name"))} <span style="color:#94a3b8; font-size:0.8rem; margin-left:8px;">({esc(u["name"])})</span></a><br>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with p_col2:
+        st.markdown('<div class="glass-card" style="height: 100%;"><div class="card-header">PROYEK LAINNYA</div>', unsafe_allow_html=True)
+        for u in users:
+            for p in u.get("otherProjects") or []:
+                if p.get("url"):
+                    st.markdown(f'<a href="{esc(p.get("url"))}" target="_blank" class="btn-link">↗ {esc(p.get("name"))} <span style="color:#94a3b8; font-size:0.8rem; margin-left:8px;">({esc(u["name"])})</span></a><br>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
 
 def render_public_detail(u: dict):
-    if st.button("← Kembali ke Dashboard", use_container_width=False):
+    # Clear query params on back
+    if st.button("← Kembali ke Dashboard"):
+        st.query_params.clear()
         st.session_state.view_user_id = None
         st.rerun()
 
@@ -592,23 +614,6 @@ def render_public_detail(u: dict):
         skill_html = "".join(f'<span class="skill-chip">{esc(s)}</span>' for s in (u.get("skills") or [])) or '<div class="list-sub">Belum ada data.</div>'
         st.markdown(f'<div class="glass-card"><div class="card-header">KEAHLIAN</div><div>{skill_html}</div></div>', unsafe_allow_html=True)
 
-        # Proyek Utama
-        mp = u.get("mainProject") or {}
-        if mp.get("url"):
-            st.markdown(f'''
-                <div class="glass-card">
-                    <div class="card-header">PROYEK UTAMA</div>
-                    <a href="{esc(mp.get('url'))}" target="_blank" class="btn-link">🔗 {esc(mp.get('name', 'Lihat Proyek'))}</a>
-                </div>
-            ''', unsafe_allow_html=True)
-
-        # Proyek Lainnya
-        proj_html = "".join(
-            f'<a href="{esc(p.get("url", "#"))}" target="_blank" class="btn-link">↗ {esc(p.get("name", ""))}</a><br>'
-            for p in (u.get("otherProjects") or [])
-        ) or '<div class="list-sub">Belum ada proyek lain.</div>'
-        st.markdown(f'<div class="glass-card"><div class="card-header">PROYEK LAINNYA</div>{proj_html}</div>', unsafe_allow_html=True)
-
         # Berkas
         files_html = ""
         for f in (u.get("files") or []):
@@ -621,7 +626,12 @@ def render_public_detail(u: dict):
         files_html = files_html or '<div class="list-sub">Belum ada berkas.</div>'
         st.markdown(f'<div class="glass-card"><div class="card-header">BERKAS</div>{files_html}</div>', unsafe_allow_html=True)
 
+
 def render_public_view(users: list):
+    # Sync query params to state
+    if "profile" in st.query_params:
+        st.session_state.view_user_id = st.query_params["profile"]
+    
     if st.session_state.view_user_id is None:
         render_public_grid(users)
     else:
@@ -630,6 +640,7 @@ def render_public_view(users: list):
             render_public_detail(u)
         else:
             st.session_state.view_user_id = None
+            st.query_params.clear()
             st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
@@ -644,6 +655,7 @@ def render_login_page(data: dict):
         
         if st.button("← Kembali ke Beranda", use_container_width=True):
             st.query_params.clear()
+            st.session_state.view_user_id = None
             st.rerun()
 
         tab1, tab2 = st.tabs(["Login Pengguna", "Login Master"])
@@ -899,7 +911,7 @@ def render_files_tab(u: dict, data: dict):
         type=["pdf", "png", "jpeg", "jpg"], 
         accept_multiple_files=True, 
         key=fu_key, 
-        disabled=False # Disable only if neither Cloudinary nor local is ready, but local is always ready
+        disabled=False 
     )
 
     if new_files:
