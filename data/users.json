@@ -1,0 +1,152 @@
+{
+  "masterPassword": "94d8790fe150cfd9e870e2c7762269388ecebf09ae442d0986b8c7cbda8855b3",
+  "users": [
+    {
+      "id": "user1",
+      "name": "Ahmad Fauzi",
+      "nim": "221001001",
+      "email": "ahmad.fauzi@example.com",
+      "phone": "+62 812-3456-7890",
+      "bio": "Mahasiswa Teknik Informatika yang berfokus pada pengembangan web dan mobile. Suka belajar hal baru dan membangun proyek open-source.",
+      "profilePicture": "",
+      "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "education": [
+        {
+          "degree": "S1 Teknik Informatika",
+          "institution": "Universitas Indonesia",
+          "year": "2022 - Sekarang"
+        },
+        {
+          "degree": "SMA IPA",
+          "institution": "SMA Negeri 1 Jakarta",
+          "year": "2019 - 2022"
+        }
+      ],
+      "experience": [
+        {
+          "role": "Web Developer Intern",
+          "company": "PT Teknologi Maju",
+          "year": "2024",
+          "description": "Membangun dashboard admin menggunakan React dan Node.js."
+        },
+        {
+          "role": "Freelance Web Developer",
+          "company": "Mandiri",
+          "year": "2023 - Sekarang",
+          "description": "Mengerjakan berbagai proyek landing page dan e-commerce untuk UMKM."
+        }
+      ],
+      "skills": [
+        "JavaScript",
+        "Python",
+        "React",
+        "Node.js",
+        "MySQL",
+        "Git"
+      ],
+      "mainProject": {
+        "name": "Sistem Informasi Akademik",
+        "url": "https://github.com/ahmad/siakad"
+      },
+      "otherProjects": [
+        {
+          "name": "Aplikasi Kasir Sederhana",
+          "url": "https://github.com/ahmad/kasir"
+        },
+        {
+          "name": "Portfolio Website",
+          "url": "https://github.com/ahmad/portfolio"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": "user2",
+      "name": "Siti Rahma",
+      "nim": "221001002",
+      "email": "siti.rahma@example.com",
+      "phone": "+62 813-9876-5432",
+      "bio": "Mahasiswi Sistem Informasi yang tertarik pada analisis data dan UI/UX design. Senang bekerja dalam tim dan berbagi pengetahuan.",
+      "profilePicture": "",
+      "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "education": [
+        {
+          "degree": "S1 Sistem Informasi",
+          "institution": "Institut Teknologi Bandung",
+          "year": "2022 - Sekarang"
+        }
+      ],
+      "experience": [
+        {
+          "role": "UI/UX Design Intern",
+          "company": "Startup Kreatif",
+          "year": "2024",
+          "description": "Merancang user flow dan wireframe untuk aplikasi mobile."
+        }
+      ],
+      "skills": [
+        "Figma",
+        "UI Design",
+        "UX Research",
+        "SQL",
+        "Tableau",
+        "Python"
+      ],
+      "mainProject": {
+        "name": "Dashboard Analitik Penjualan",
+        "url": "https://github.com/siti/dashboard"
+      },
+      "otherProjects": [
+        {
+          "name": "Redesign Aplikasi OVO",
+          "url": "https://github.com/siti/ovo-redesign"
+        }
+      ],
+      "files": []
+    },
+    {
+      "id": "user3",
+      "name": "Budi Santoso",
+      "nim": "221001003",
+      "email": "budi.santoso@example.com",
+      "phone": "+62 857-1111-2222",
+      "bio": "Mahasiswa Teknik Komputer yang berfokus pada embedded systems dan IoT. Suka bereksperimen dengan Raspberry Pi dan Arduino.",
+      "profilePicture": "",
+      "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "education": [
+        {
+          "degree": "S1 Teknik Komputer",
+          "institution": "Universitas Gadjah Mada",
+          "year": "2021 - Sekarang"
+        }
+      ],
+      "experience": [
+        {
+          "role": "IoT Engineer Intern",
+          "company": "PT Smart Device",
+          "year": "2024",
+          "description": "Mengembangkan firmware perangkat IoT berbasis ESP32."
+        }
+      ],
+      "skills": [
+        "C++",
+        "Arduino",
+        "Raspberry Pi",
+        "Python",
+        "MQTT",
+        "Linux"
+      ],
+      "mainProject": {
+        "name": "Sistem Monitoring Suhu IoT",
+        "url": "https://github.com/budi/iot-monitor"
+      },
+      "otherProjects": [
+        {
+          "name": "Smart Home Controller",
+          "url": "https://github.com/budi/smarthome"
+        }
+      ],
+      "files": []
+    }
+  ]
+}
