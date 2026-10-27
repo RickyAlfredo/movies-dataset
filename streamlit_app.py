@@ -1,6 +1,7 @@
 import hashlib
 import html as html_lib
 import json
+import base64
 from io import BytesIO
 from pathlib import Path
 import time
@@ -86,7 +87,7 @@ components.html("""
 """, height=0, width=0)
 
 # ════════════════════════════════════════════════════════════════════
-# 3. CLOUDINARY
+# 3. CLOUDINARY & FILE STORAGE
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
 try:
@@ -105,17 +106,54 @@ except Exception:
 MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
-def upload_bytes(file_bytes: bytes, filename: str, resource_type: str):
-    if not CLOUDINARY_READY: return None
-    base = filename.rsplit(".", 1)[0].replace(" ", "_")[:60]
-    unique_id = f"ecv_{int(time.time())}_{base}"
+# Set path specifically to the workspace folder
+BASE_DIR = Path("/workspaces/movies-dataset")
+if not BASE_DIR.exists():
+    BASE_DIR = Path(__file__).parent
+DATA_FILE = BASE_DIR / "data" / "users.json"
+DATA_FILE.parent.mkdir(exist_ok=True, parents=True)
+
+def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: str):
+    # 1. Save Locally
+    user_dir = DATA_FILE.parent / user_id
+    user_dir.mkdir(exist_ok=True, parents=True)
+    file_path = user_dir / filename
+    
     try:
-        result = cloudinary.uploader.upload(
-            BytesIO(file_bytes), resource_type=resource_type, folder="ecv", public_id=unique_id
-        )
-        return {"url": result["secure_url"], "public_id": result["public_id"]}
-    except Exception:
+        file_path.write_bytes(file_bytes)
+    except Exception as e:
+        st.error(f"Gagal menyimpan file lokal: {e}")
         return None
+
+    local_path = str(file_path.relative_to(DATA_FILE.parent))
+    
+    # 2. Also save to Cloudinary if ready (optional)
+    if CLOUDINARY_READY:
+        base = filename.rsplit(".", 1)[0].replace(" ", "_")[:60]
+        unique_id = f"ecv_{int(time.time())}_{base}"
+        try:
+            result = cloudinary.uploader.upload(
+                BytesIO(file_bytes), resource_type=resource_type, folder="ecv", public_id=unique_id
+            )
+            return {
+                "url": result["secure_url"], 
+                "public_id": result["public_id"], 
+                "local_path": local_path
+            }
+        except Exception:
+            pass # Fallback to local only if Cloudinary fails
+            
+    return {"url": "#", "public_id": "", "local_path": local_path}
+
+def get_file_data_url(path_str):
+    if not path_str: return "#"
+    full_path = DATA_FILE.parent / path_str
+    if not full_path.exists(): return "#"
+    try:
+        b64 = base64.b64encode(full_path.read_bytes()).decode()
+        return f"data:application/octet-stream;base64,{b64}"
+    except Exception:
+        return "#"
 
 def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
     if not CLOUDINARY_READY or not public_id: return
@@ -136,14 +174,14 @@ def validate_upload(uploaded) -> tuple[bool, str]:
 def sha256(s: str) -> str: return hashlib.sha256(s.encode("utf-8")).hexdigest()
 def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(c in "0123456789abcdef" for c in s)
 def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
-def save_data(data: dict) -> None: DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+def save_data(data: dict) -> None:
+    DATA_FILE.parent.mkdir(exist_ok=True, parents=True)
+    DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 # ════════════════════════════════════════════════════════════════════
 # 5. SEED + PERSISTENCE
 # ════════════════════════════════════════════════════════════════════
-DATA_FILE = Path(__file__).parent / "data" / "users.json"
-DATA_FILE.parent.mkdir(exist_ok=True)
-
 SEED = {
     "masterPassword": "capstone12",
     "users": [
@@ -198,7 +236,14 @@ SEED = {
 def load_and_migrate() -> dict:
     if not DATA_FILE.exists():
         DATA_FILE.write_text(json.dumps(SEED, indent=2, ensure_ascii=False), encoding="utf-8")
-    data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    
+    try:
+        data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        # Fallback if user corrupted the JSON manually
+        data = SEED
+        DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
     changed = False
     if "masterPassword" not in data:
         data["masterPassword"] = "capstone12"
@@ -227,7 +272,7 @@ def load_and_migrate() -> dict:
 for key, default in [
     ("logged_in_as", None), ("is_master", False), ("save_version", 0),
     ("flash", None), ("file_upload_version", 0), ("avatar_upload_version", 0),
-    ("scroll_to_top", False)
+    ("scroll_to_top", False), ("view_user_id", None)
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -443,99 +488,149 @@ def build_wave() -> str:
 """
 
 # ════════════════════════════════════════════════════════════════════
-# 8. PUBLIC VIEW
+# 8. PUBLIC VIEW (GRID & DETAILS)
 # ════════════════════════════════════════════════════════════════════
-def render_public_view(users: list):
+def render_public_grid(users: list):
     st.markdown('<h1 class="title-main">E-CV Kelompok</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle-main">Silakan pilih tab di bawah untuk melihat profil dan mengunduh berkas.</p>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle-main">Silakan pilih profil di bawah ini untuk melihat detail.</p>', unsafe_allow_html=True)
 
-    tabs = st.tabs([u["name"] for u in users])
+    cols = st.columns(3, gap="large")
+    for idx, u in enumerate(users):
+        with cols[idx]:
+            if u.get("profilePicture"):
+                avatar_html = f'<img class="profile-img" src="{esc(u["profilePicture"])}" alt="avatar" />'
+            else:
+                initial = esc((u["name"] or "?")[0].upper())
+                avatar_html = f'<div class="profile-img-container">{initial}</div>'
 
-    for tab, u in zip(tabs, users):
-        with tab:
-            col_left, col_right = st.columns([1.2, 2], gap="large")
+            contacts = []
+            if u.get("email"): contacts.append(f'<div class="contact-item"><div class="contact-icon">✉</div> {esc(u["email"])}</div>')
+            if u.get("phone"): contacts.append(f'<div class="contact-item"><div class="contact-icon">📞</div> {esc(u["phone"])}</div>')
+            
+            contact_html = "".join(contacts)
 
-            with col_left:
-                if u.get("profilePicture"):
-                    avatar_html = f'<img class="profile-img" src="{esc(u["profilePicture"])}" alt="avatar" />'
-                else:
-                    initial = esc((u["name"] or "?")[0].upper())
-                    avatar_html = f'<div class="profile-img-container">{initial}</div>'
+            st.markdown(f"""
+                <div class="glass-card" style="text-align: center; height: 100%;">
+                    {avatar_html}
+                    <div class="profile-name">{esc(u['name'])}</div>
+                    <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
+                    <div class="profile-nim">NIM: {esc(u['nim'])}</div>
+                    <div style="text-align: left; margin-top: 16px;">
+                        <div class="card-header" style="font-size: 0.75rem;">KONTAK</div>
+                        {contact_html}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
-                contacts = []
-                if u.get("email"): contacts.append(f'<a href="mailto:{esc(u["email"])}" class="contact-item"><div class="contact-icon">✉</div> {esc(u["email"])}</a>')
-                if u.get("phone"): contacts.append(f'<a href="tel:{esc(u["phone"])}" class="contact-item"><div class="contact-icon">📞</div> {esc(u["phone"])}</a>')
-                if u.get("location"): contacts.append(f'<div class="contact-item"><div class="contact-icon">📍</div> {esc(u["location"])}</div>')
+            if st.button("Lihat Profil Lengkap", key=f"btn_view_{u['id']}", use_container_width=True):
+                st.session_state.view_user_id = u['id']
+                st.rerun()
+
+def render_public_detail(u: dict):
+    if st.button("← Kembali ke Dashboard", use_container_width=False):
+        st.session_state.view_user_id = None
+        st.rerun()
+
+    st.markdown('<h1 class="title-main" style="margin-top: -10px;">Profil Lengkap</h1>', unsafe_allow_html=True)
+
+    col_left, col_right = st.columns([1.2, 2], gap="large")
+
+    with col_left:
+        if u.get("profilePicture"):
+            avatar_html = f'<img class="profile-img" src="{esc(u["profilePicture"])}" alt="avatar" />'
+        else:
+            initial = esc((u["name"] or "?")[0].upper())
+            avatar_html = f'<div class="profile-img-container">{initial}</div>'
+
+        contacts = []
+        if u.get("email"): contacts.append(f'<a href="mailto:{esc(u["email"])}" class="contact-item"><div class="contact-icon">✉</div> {esc(u["email"])}</a>')
+        if u.get("phone"): contacts.append(f'<a href="tel:{esc(u["phone"])}" class="contact-item"><div class="contact-icon">📞</div> {esc(u["phone"])}</a>')
+        if u.get("location"): contacts.append(f'<div class="contact-item"><div class="contact-icon">📍</div> {esc(u["location"])}</div>')
+        
+        contact_html = "".join(contacts) or '<div class="text-muted">Belum ada kontak.</div>'
+
+        st.markdown(f"""
+            <div class="glass-card" style="text-align: center;">
+                {avatar_html}
+                <div class="profile-name">{esc(u['name'])}</div>
+                <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
+                <div class="profile-nim">NIM: {esc(u['nim'])}</div>
+                <div style="text-align: left;">
+                    <div class="card-header" style="font-size: 0.75rem;">KONTAK</div>
+                    {contact_html}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col_right:
+        # Profil
+        st.markdown(f'''
+            <div class="glass-card">
+                <div class="card-header">PROFIL</div>
+                <div class="list-desc">{esc(u.get('bio', 'Belum ada deskripsi profil.'))}</div>
+            </div>
+        ''', unsafe_allow_html=True)
+
+        # Pendidikan
+        edu_html = "".join(
+            f'<div class="list-item"><div class="list-title">{esc(e.get("degree", ""))}</div>'
+            f'<div class="list-sub">{esc(e.get("institution", ""))} • {esc(e.get("year", ""))}</div></div>'
+            for e in (u.get("education") or [])
+        ) or '<div class="list-sub">Belum ada data.</div>'
+        st.markdown(f'<div class="glass-card"><div class="card-header">PENDIDIKAN</div>{edu_html}</div>', unsafe_allow_html=True)
+
+        # Pengalaman
+        exp_html = "".join(
+            f'<div class="list-item"><div class="list-title">{esc(e.get("role", ""))}</div>'
+            f'<div class="list-sub">{esc(e.get("company", ""))} • {esc(e.get("year", ""))}</div>'
+            f'<div class="list-desc">{esc(e.get("description", ""))}</div></div>'
+            for e in (u.get("experience") or [])
+        ) or '<div class="list-sub">Belum ada data.</div>'
+        st.markdown(f'<div class="glass-card"><div class="card-header">PENGALAMAN</div>{exp_html}</div>', unsafe_allow_html=True)
+
+        # Keahlian
+        skill_html = "".join(f'<span class="skill-chip">{esc(s)}</span>' for s in (u.get("skills") or [])) or '<div class="list-sub">Belum ada data.</div>'
+        st.markdown(f'<div class="glass-card"><div class="card-header">KEAHLIAN</div><div>{skill_html}</div></div>', unsafe_allow_html=True)
+
+        # Proyek Utama
+        mp = u.get("mainProject") or {}
+        if mp.get("url"):
+            st.markdown(f'''
+                <div class="glass-card">
+                    <div class="card-header">PROYEK UTAMA</div>
+                    <a href="{esc(mp.get('url'))}" target="_blank" class="btn-link">🔗 {esc(mp.get('name', 'Lihat Proyek'))}</a>
+                </div>
+            ''', unsafe_allow_html=True)
+
+        # Proyek Lainnya
+        proj_html = "".join(
+            f'<a href="{esc(p.get("url", "#"))}" target="_blank" class="btn-link">↗ {esc(p.get("name", ""))}</a><br>'
+            for p in (u.get("otherProjects") or [])
+        ) or '<div class="list-sub">Belum ada proyek lain.</div>'
+        st.markdown(f'<div class="glass-card"><div class="card-header">PROYEK LAINNYA</div>{proj_html}</div>', unsafe_allow_html=True)
+
+        # Berkas
+        files_html = ""
+        for f in (u.get("files") or []):
+            data_url = get_file_data_url(f.get("local_path"))
+            if data_url != "#":
+                files_html += f'<a href="{data_url}" download="{esc(f.get("name", ""))}" class="btn-link download">📄 Unduh {esc(f.get("name", ""))}</a><br>'
+            elif f.get("url") and f.get("url") != "#":
+                files_html += f'<a href="{esc(f.get("url"))}" target="_blank" class="btn-link download">📄 Unduh {esc(f.get("name", ""))}</a><br>'
                 
-                contact_html = "".join(contacts) or '<div class="text-muted">Belum ada kontak.</div>'
+        files_html = files_html or '<div class="list-sub">Belum ada berkas.</div>'
+        st.markdown(f'<div class="glass-card"><div class="card-header">BERKAS</div>{files_html}</div>', unsafe_allow_html=True)
 
-                st.markdown(f"""
-                    <div class="glass-card" style="text-align: center;">
-                        {avatar_html}
-                        <div class="profile-name">{esc(u['name'])}</div>
-                        <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
-                        <div class="profile-nim">NIM: {esc(u['nim'])}</div>
-                        <div style="text-align: left;">
-                            <div class="card-header" style="font-size: 0.75rem;">KONTAK</div>
-                            {contact_html}
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            with col_right:
-                # Profil
-                st.markdown(f'''
-                    <div class="glass-card">
-                        <div class="card-header">PROFIL</div>
-                        <div class="list-desc">{esc(u.get('bio', 'Belum ada deskripsi profil.'))}</div>
-                    </div>
-                ''', unsafe_allow_html=True)
-
-                # Pendidikan
-                edu_html = "".join(
-                    f'<div class="list-item"><div class="list-title">{esc(e.get("degree", ""))}</div>'
-                    f'<div class="list-sub">{esc(e.get("institution", ""))} • {esc(e.get("year", ""))}</div></div>'
-                    for e in (u.get("education") or [])
-                ) or '<div class="list-sub">Belum ada data.</div>'
-                st.markdown(f'<div class="glass-card"><div class="card-header">PENDIDIKAN</div>{edu_html}</div>', unsafe_allow_html=True)
-
-                # Pengalaman
-                exp_html = "".join(
-                    f'<div class="list-item"><div class="list-title">{esc(e.get("role", ""))}</div>'
-                    f'<div class="list-sub">{esc(e.get("company", ""))} • {esc(e.get("year", ""))}</div>'
-                    f'<div class="list-desc">{esc(e.get("description", ""))}</div></div>'
-                    for e in (u.get("experience") or [])
-                ) or '<div class="list-sub">Belum ada data.</div>'
-                st.markdown(f'<div class="glass-card"><div class="card-header">PENGALAMAN</div>{exp_html}</div>', unsafe_allow_html=True)
-
-                # Keahlian
-                skill_html = "".join(f'<span class="skill-chip">{esc(s)}</span>' for s in (u.get("skills") or [])) or '<div class="list-sub">Belum ada data.</div>'
-                st.markdown(f'<div class="glass-card"><div class="card-header">KEAHLIAN</div><div>{skill_html}</div></div>', unsafe_allow_html=True)
-
-                # Proyek Utama
-                mp = u.get("mainProject") or {}
-                if mp.get("url"):
-                    st.markdown(f'''
-                        <div class="glass-card">
-                            <div class="card-header">PROYEK UTAMA</div>
-                            <a href="{esc(mp.get('url'))}" target="_blank" class="btn-link">🔗 {esc(mp.get('name', 'Lihat Proyek'))}</a>
-                        </div>
-                    ''', unsafe_allow_html=True)
-
-                # Proyek Lainnya
-                proj_html = "".join(
-                    f'<a href="{esc(p.get("url", "#"))}" target="_blank" class="btn-link">↗ {esc(p.get("name", ""))}</a><br>'
-                    for p in (u.get("otherProjects") or [])
-                ) or '<div class="list-sub">Belum ada proyek lain.</div>'
-                st.markdown(f'<div class="glass-card"><div class="card-header">PROYEK LAINNYA</div>{proj_html}</div>', unsafe_allow_html=True)
-
-                # Berkas
-                files_html = "".join(
-                    f'<a href="{esc(f.get("url", "#"))}" target="_blank" class="btn-link download">📄 Unduh {esc(f.get("name", ""))}</a><br>'
-                    for f in (u.get("files") or [])
-                ) or '<div class="list-sub">Belum ada berkas.</div>'
-                st.markdown(f'<div class="glass-card"><div class="card-header">BERKAS</div>{files_html}</div>', unsafe_allow_html=True)
-
+def render_public_view(users: list):
+    if st.session_state.view_user_id is None:
+        render_public_grid(users)
+    else:
+        u = next((x for x in users if x["id"] == st.session_state.view_user_id), None)
+        if u:
+            render_public_detail(u)
+        else:
+            st.session_state.view_user_id = None
+            st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
 # 9. LOGIN VIEW
@@ -668,9 +763,9 @@ def render_edit_data_tab(u: dict, data: dict):
                 ok, msg = validate_upload(avatar_file)
                 if ok:
                     if st.form_submit_button("Unggah Foto", type="secondary"):
-                        result = upload_bytes(avatar_file.getvalue(), avatar_file.name, "image")
+                        result = upload_bytes(avatar_file.getvalue(), avatar_file.name, u['id'], "image")
                         if result:
-                            u["profilePicture"] = result["url"]
+                            u["profilePicture"] = result.get("url") if result.get("url") != "#" else get_file_data_url(result.get("local_path"))
                             save_data(data)
                             st.session_state.avatar_upload_version += 1
                             st.session_state.flash = "✅ Foto profil diperbarui."
@@ -804,7 +899,7 @@ def render_files_tab(u: dict, data: dict):
         type=["pdf", "png", "jpeg", "jpg"], 
         accept_multiple_files=True, 
         key=fu_key, 
-        disabled=not CLOUDINARY_READY
+        disabled=False # Disable only if neither Cloudinary nor local is ready, but local is always ready
     )
 
     if new_files:
@@ -817,11 +912,13 @@ def render_files_tab(u: dict, data: dict):
                     continue
                 
                 resource_type = "raw" if new_file.type == "application/pdf" else "image"
-                result = upload_bytes(new_file.getvalue(), new_file.name, resource_type)
+                result = upload_bytes(new_file.getvalue(), new_file.name, u['id'], resource_type)
                 if result:
                     u["files"].append({
-                        "name": new_file.name, "url": result["url"],
-                        "public_id": result["public_id"],
+                        "name": new_file.name, 
+                        "url": result.get("url"),
+                        "public_id": result.get("public_id"),
+                        "local_path": result.get("local_path"),
                         "type": "pdf" if new_file.type == "application/pdf" else "image",
                     })
                     success_count += 1
@@ -843,10 +940,23 @@ def render_files_tab(u: dict, data: dict):
     for i, f in enumerate(files):
         c1, c2, c3 = st.columns([4, 1, 1])
         with c1: st.markdown(f"📄 **{esc(f.get('name'))}**")
-        with c2: st.link_button("Lihat", f.get("url", "#"), use_container_width=True)
+        with c2: 
+            link = get_file_data_url(f.get("local_path"))
+            if link == "#" and f.get("url"):
+                link = f.get("url")
+            st.link_button("Lihat", link, use_container_width=True)
         with c3:
-            if st.button("Hapus", key=f"del_{i}_{f.get('public_id')}", type="primary"):
-                destroy_on_cloudinary(f.get("public_id", ""), "raw" if f.get("type") == "pdf" else "image")
+            if st.button("Hapus", key=f"del_{i}_{f.get('name')}", type="primary"):
+                if f.get("public_id"):
+                    destroy_on_cloudinary(f.get("public_id"), "raw" if f.get("type") == "pdf" else "image")
+                
+                # Remove local file
+                if f.get("local_path"):
+                    local_file = DATA_FILE.parent / f["local_path"]
+                    if local_file.exists():
+                        try: local_file.unlink()
+                        except Exception: pass
+
                 u["files"].remove(f)
                 save_data(data)
                 st.session_state.flash = f"✅ Berkas dihapus."
