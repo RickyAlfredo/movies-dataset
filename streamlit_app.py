@@ -1,5 +1,5 @@
 """
-E-CV — Step 2: Cloudinary file uploads + profile pictures.
+E-CV — Step 3: Original color theme + 5 MB file limit enforced.
 Access admin via URL param:   ?admin=1
 Default credentials:
     Master:  master / capstone12
@@ -25,7 +25,7 @@ st.set_page_config(page_title="E-CV", page_icon="📄", layout="wide")
 
 
 # ════════════════════════════════════════════════════════════════════
-# 2. CLOUDINARY SETUP (graceful, works even if unconfigured)
+# 2. CLOUDINARY SETUP
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
 try:
@@ -39,16 +39,16 @@ try:
         secure=True,
     )
     CLOUDINARY_READY = True
-except Exception as _cloud_err:
+except Exception:
     CLOUDINARY_READY = False
 
 
-MAX_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
+# ── 5 MB limit (Streamlit UI will still say "200MB", but code enforces 5 MB) ──
+MAX_FILE_BYTES = 5 * 1024 * 1024          # 5 MB
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
 
-def upload_bytes(file_bytes: bytes, filename: str, resource_type: str) -> dict | None:
-    """Upload raw bytes to Cloudinary. Returns {url, public_id} or None."""
+def upload_bytes(file_bytes: bytes, filename: str, resource_type: str):
     if not CLOUDINARY_READY:
         st.error("❌ Cloudinary belum dikonfigurasi. Periksa `.streamlit/secrets.toml`.")
         return None
@@ -68,7 +68,6 @@ def upload_bytes(file_bytes: bytes, filename: str, resource_type: str) -> dict |
 
 
 def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
-    """Best-effort delete from Cloudinary."""
     if not CLOUDINARY_READY or not public_id:
         return
     try:
@@ -78,12 +77,11 @@ def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
 
 
 def validate_upload(uploaded) -> tuple[bool, str]:
-    """Return (ok, error_message)."""
     if uploaded is None:
         return False, "Tidak ada berkas."
     if uploaded.size > MAX_FILE_BYTES:
         mb = uploaded.size / (1024 * 1024)
-        return False, f"Ukuran berkas {mb:.1f} MB melebihi 5 MB."
+        return False, f"Ukuran berkas {mb:.1f} MB melebihi batas 5 MB."
     if uploaded.type not in ALLOWED_MIMES:
         return False, "Hanya berkas .pdf, .png, atau .jpeg yang diizinkan."
     return True, ""
@@ -231,81 +229,168 @@ for key, default in [
     ("flash", None),
     ("file_upload_version", 0),
     ("avatar_upload_version", 0),
+    ("dark_mode", False),          # placeholder for later
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 
 # ════════════════════════════════════════════════════════════════════
-# 6. GLOBAL CSS
+# 6. GLOBAL CSS — palette from RickyAlfredo/ecv-project
 # ════════════════════════════════════════════════════════════════════
-st.markdown("""
+CSS = """
 <style>
-    .block-container { padding-top: 2rem; padding-bottom: 3rem; max-width: 1100px; }
-    .logo { font-size: 26px; font-weight: 800; margin-bottom: 18px; color: #1a2233; }
-    .logo span { color: #3b6fd4; }
+/* ----- ORIGINAL PALETTE (light) ----- */
+:root {
+    --bg-base: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+    --surface: rgba(255, 255, 255, 0.7);
+    --surface-hover: rgba(255, 255, 255, 0.9);
+    --border: rgba(200, 214, 229, 0.5);
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #475569;
+    --shadow-glow: 0 8px 32px rgba(30, 41, 59, 0.08);
+    --shadow-card: 0 4px 16px rgba(30, 41, 59, 0.04);
+    --link-color: #4f46e5;
+    --link-hover: #4338ca;
+    --gradient-header: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    --gradient-tab: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 
-    .profile-card {
-        background: #fff; border: 1px solid #e3e8f0; border-radius: 16px;
-        padding: 26px 22px; text-align: center;
-        box-shadow: 0 2px 10px rgba(20,30,60,0.05);
-    }
-    .avatar, .avatar-img {
-        width: 100px; height: 100px; border-radius: 50%;
-        margin: 0 auto 16px; display: block;
-    }
-    .avatar {
-        background: #d4e2f7; color: #3b6fd4;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 38px; font-weight: 700;
-    }
-    .avatar-img { object-fit: cover; border: 3px solid #d4e2f7; }
-    .p-name { font-size: 20px; font-weight: 700; color: #1a2233; margin: 0 0 4px; }
-    .p-nim  { font-size: 13px; color: #6b7a92; margin-bottom: 16px; }
-    .p-bio  { font-size: 13px; color: #46536b; line-height: 1.55; margin-bottom: 16px; text-align: left; }
-    .p-contact { font-size: 13px; color: #6b7a92; margin: 5px 0; text-align: left; word-break: break-word; }
+/* Streamlit theme overrides */
+.stApp {
+    background: var(--bg-base) !important;
+    background-attachment: fixed !important;
+}
+.block-container {
+    padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+    max-width: 1100px !important;
+}
 
-    .card {
-        background: #fff; border: 1px solid #e3e8f0; border-radius: 16px;
-        padding: 22px; margin-bottom: 16px;
-        box-shadow: 0 2px 10px rgba(20,30,60,0.05);
-    }
-    .card h3 {
-        margin: 0 0 14px; font-size: 12px; text-transform: uppercase;
-        letter-spacing: 1.2px; color: #6b7a92; font-weight: 700;
-    }
+/* Typography */
+html, body, [class*="css"] {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    color: var(--text-primary) !important;
+}
 
-    .item { border-left: 3px solid #3b6fd4; padding: 2px 0 2px 14px; margin-bottom: 14px; }
-    .item:last-child { margin-bottom: 0; }
-    .item .t { font-weight: 600; font-size: 14px; color: #1a2233; }
-    .item .s { font-size: 12px; color: #6b7a92; margin-top: 3px; }
-    .item .d { font-size: 12px; color: #46536b; margin-top: 6px; line-height: 1.5; }
+/* Logo */
+.logo {
+    font-size: 26px; font-weight: 800;
+    margin-bottom: 18px;
+    color: var(--text-primary);
+}
+.logo span { color: #3b82f6; }
 
-    .chip {
-        display: inline-block; padding: 5px 12px; margin: 3px;
-        border-radius: 100px; background: #e8eefb; color: #2a4a80;
-        font-size: 12px; font-weight: 500;
-    }
+/* Profile card */
+.profile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 22px;
+    text-align: center;
+    box-shadow: var(--shadow-glow);
+    backdrop-filter: blur(12px);
+}
+.avatar, .avatar-img {
+    width: 100px; height: 100px; border-radius: 50%;
+    margin: 0 auto 16px; display: block;
+}
+.avatar {
+    background: #dbeafe; color: #2563eb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 38px; font-weight: 700;
+}
+.avatar-img { object-fit: cover; border: 3px solid #dbeafe; }
+.p-name { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
+.p-nim  { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+.p-bio  { font-size: 13px; color: var(--text-muted); line-height: 1.55; margin-bottom: 16px; text-align: left; }
+.p-contact { font-size: 13px; color: var(--text-secondary); margin: 5px 0; text-align: left; word-break: break-word; }
 
-    .link-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 10px 14px; margin-bottom: 8px;
-        border-radius: 10px; background: #f5f8fd; border: 1px solid #e3e8f0;
-        color: #1a2233 !important; text-decoration: none !important; font-size: 13px;
-    }
-    .link-row:hover { background: #e8eefb; }
+/* Content cards */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(12px);
+}
+.card h3 {
+    margin: 0 0 14px; font-size: 12px; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--text-secondary); font-weight: 700;
+}
 
-    .project-main {
-        display: block; padding: 14px; border-radius: 10px;
-        background: #e8eefb; color: #2a4a80 !important;
-        text-decoration: none !important; font-weight: 600;
-        text-align: center; font-size: 14px;
-    }
-    .project-main:hover { background: #d4e2f7; }
+/* Timeline items */
+.item { border-left: 3px solid #667eea; padding: 2px 0 2px 14px; margin-bottom: 14px; }
+.item:last-child { margin-bottom: 0; }
+.item .t { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+.item .s { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+.item .d { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
 
-    .empty { font-size: 13px; color: #98a4b8; font-style: italic; padding: 8px 0; }
+/* Chips */
+.chip {
+    display: inline-block; padding: 5px 12px; margin: 3px;
+    border-radius: 100px;
+    background: rgba(102, 126, 234, 0.12);
+    color: #4f46e5;
+    font-size: 12px; font-weight: 500;
+}
+
+/* File / project rows */
+.link-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; margin-bottom: 8px;
+    border-radius: 10px;
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+.link-row:hover { background: var(--surface); }
+
+/* Main project button */
+.project-main {
+    display: block; padding: 14px; border-radius: 10px;
+    background: var(--gradient-tab);
+    color: #ffffff !important;
+    text-decoration: none !important;
+    font-weight: 600; text-align: center; font-size: 14px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    transition: transform 0.2s;
+}
+.project-main:hover { transform: scale(1.02); }
+
+/* Empty state */
+.empty { font-size: 13px; color: #94a3b8; font-style: italic; padding: 8px 0; }
+
+/* Streamlit native element tweaks */
+div[data-testid="stTabs"] button {
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    color: var(--text-secondary) !important;
+}
+div[data-testid="stTabs"] button[aria-selected="true"] {
+    background: var(--gradient-tab) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+    border: none !important;
+}
+div[data-testid="stForm"] {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem;
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(12px);
+}
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(CSS, unsafe_allow_html=True)
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -489,9 +574,8 @@ def render_admin_panel(data: dict):
             render_change_password_tab(target_user, data)
 
 
-# ── Edit Data tab (with avatar section) ─────────────────────────
 def render_edit_data_tab(u: dict, data: dict):
-    # ── Foto Profil ──────
+    # ── Foto Profil ──
     st.markdown("#### Foto Profil")
     av_col1, av_col2 = st.columns([1, 3])
     with av_col1:
@@ -501,7 +585,7 @@ def render_edit_data_tab(u: dict, data: dict):
             initials = esc((u["name"] or "?")[0])
             st.markdown(
                 f'<div style="width:120px;height:120px;border-radius:50%;'
-                f'background:#d4e2f7;color:#3b6fd4;display:flex;align-items:center;'
+                f'background:#dbeafe;color:#2563eb;display:flex;align-items:center;'
                 f'justify-content:center;font-size:44px;font-weight:700;">{initials}</div>',
                 unsafe_allow_html=True,
             )
@@ -536,7 +620,6 @@ def render_edit_data_tab(u: dict, data: dict):
 
     st.divider()
 
-    # ── Main form ──────
     version = st.session_state.save_version
     key_base = f"{u['id']}_{version}"
 
@@ -599,10 +682,9 @@ def render_edit_data_tab(u: dict, data: dict):
         st.rerun()
 
 
-# ── Berkas tab ──────────────────────────────────────────────────
 def render_files_tab(u: dict, data: dict):
     st.markdown("#### Unggah Berkas Baru")
-    st.caption("Hanya `.pdf`, `.png`, `.jpeg` · maksimal 5 MB per berkas.")
+    st.caption("Hanya `.pdf`, `.png`, `.jpeg` · **maksimal 5 MB** per berkas.")
 
     fu_key = f"file_uploader_{u['id']}_{st.session_state.file_upload_version}"
     new_file = st.file_uploader(
@@ -661,7 +743,6 @@ def render_files_tab(u: dict, data: dict):
                 st.rerun()
 
 
-# ── Change Password (non-master) ────────────────────────────────
 def render_change_password_tab(u: dict, data: dict):
     st.markdown("#### Ubah Sandi Anda")
     st.caption("Minimal 6 karakter. Sandi lama wajib dimasukkan untuk verifikasi.")
@@ -686,7 +767,6 @@ def render_change_password_tab(u: dict, data: dict):
             st.rerun()
 
 
-# ── Reset Password (master) ─────────────────────────────────────
 def render_reset_password_tab(u: dict, data: dict):
     st.markdown(f"#### Reset Sandi: {u['name']} ({u['nim']})")
     st.caption("Sebagai Master Admin, Anda dapat mengganti sandi pengguna tanpa perlu sandi lama.")
