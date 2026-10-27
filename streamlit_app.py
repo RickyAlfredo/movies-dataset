@@ -1,5 +1,5 @@
 """
-E-CV — Step 3: Original color theme + 5 MB file limit enforced.
+E-CV — Step 4: Dark mode + SVG wave
 Access admin via URL param:   ?admin=1
 Default credentials:
     Master:  master / capstone12
@@ -25,7 +25,7 @@ st.set_page_config(page_title="E-CV", page_icon="📄", layout="wide")
 
 
 # ════════════════════════════════════════════════════════════════════
-# 2. CLOUDINARY SETUP
+# 2. CLOUDINARY
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
 try:
@@ -43,14 +43,13 @@ except Exception:
     CLOUDINARY_READY = False
 
 
-# ── 5 MB limit (Streamlit UI will still say "200MB", but code enforces 5 MB) ──
-MAX_FILE_BYTES = 5 * 1024 * 1024          # 5 MB
+MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
 
 def upload_bytes(file_bytes: bytes, filename: str, resource_type: str):
     if not CLOUDINARY_READY:
-        st.error("❌ Cloudinary belum dikonfigurasi. Periksa `.streamlit/secrets.toml`.")
+        st.error("❌ Cloudinary belum dikonfigurasi.")
         return None
     base = filename.rsplit(".", 1)[0].replace(" ", "_")[:60]
     unique_id = f"ecv_{int(time.time())}_{base}"
@@ -63,7 +62,7 @@ def upload_bytes(file_bytes: bytes, filename: str, resource_type: str):
         )
         return {"url": result["secure_url"], "public_id": result["public_id"]}
     except Exception as e:
-        st.error(f"❌ Gagal mengunggah ke Cloudinary: {e}")
+        st.error(f"❌ Gagal mengunggah: {e}")
         return None
 
 
@@ -229,176 +228,280 @@ for key, default in [
     ("flash", None),
     ("file_upload_version", 0),
     ("avatar_upload_version", 0),
-    ("dark_mode", False),          # placeholder for later
+    ("dark_mode", False),
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 
 # ════════════════════════════════════════════════════════════════════
-# 6. GLOBAL CSS — palette from RickyAlfredo/ecv-project
+# 6. THEME PALETTES
 # ════════════════════════════════════════════════════════════════════
-CSS = """
-<style>
-/* ----- ORIGINAL PALETTE (light) ----- */
-:root {
-    --bg-base: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
-    --surface: rgba(255, 255, 255, 0.7);
-    --surface-hover: rgba(255, 255, 255, 0.9);
-    --border: rgba(200, 214, 229, 0.5);
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --text-muted: #475569;
-    --shadow-glow: 0 8px 32px rgba(30, 41, 59, 0.08);
-    --shadow-card: 0 4px 16px rgba(30, 41, 59, 0.04);
-    --link-color: #4f46e5;
-    --link-hover: #4338ca;
-    --gradient-header: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-    --gradient-tab: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+LIGHT = {
+    "bg":            "linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%)",
+    "surface":       "rgba(255, 255, 255, 0.7)",
+    "surface_hover": "rgba(255, 255, 255, 0.9)",
+    "border":        "rgba(200, 214, 229, 0.5)",
+    "text_primary":  "#1e293b",
+    "text_secondary":"#64748b",
+    "text_muted":    "#475569",
+    "text_faint":    "#94a3b8",
+    "shadow_glow":   "0 8px 32px rgba(30, 41, 59, 0.08)",
+    "shadow_card":   "0 4px 16px rgba(30, 41, 59, 0.04)",
+    "link":          "#4f46e5",
+    "gradient_tab":  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    "chip_bg":       "rgba(102, 126, 234, 0.12)",
+    "chip_text":     "#4f46e5",
+    "avatar_bg":     "#dbeafe",
+    "avatar_text":   "#2563eb",
+    "wave_1":        "rgba(120, 160, 255, 0.35)",
+    "wave_2":        "rgba(180, 120, 255, 0.30)",
+    "wave_3":        "rgba(90, 200, 220, 0.25)",
 }
 
-/* Streamlit theme overrides */
-.stApp {
-    background: var(--bg-base) !important;
-    background-attachment: fixed !important;
+DARK = {
+    "bg":            "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    "surface":       "rgba(30, 41, 59, 0.6)",
+    "surface_hover": "rgba(51, 65, 85, 0.85)",
+    "border":        "rgba(100, 116, 139, 0.3)",
+    "text_primary":  "#f1f5f9",
+    "text_secondary":"#94a3b8",
+    "text_muted":    "#cbd5e1",
+    "text_faint":    "#64748b",
+    "shadow_glow":   "0 8px 32px rgba(0, 0, 0, 0.45)",
+    "shadow_card":   "0 4px 16px rgba(0, 0, 0, 0.3)",
+    "link":          "#818cf8",
+    "gradient_tab":  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    "chip_bg":       "rgba(139, 92, 246, 0.18)",
+    "chip_text":     "#a78bfa",
+    "avatar_bg":     "#312e81",
+    "avatar_text":   "#a5b4fc",
+    "wave_1":        "rgba(60, 90, 180, 0.30)",
+    "wave_2":        "rgba(120, 70, 200, 0.25)",
+    "wave_3":        "rgba(50, 130, 160, 0.22)",
 }
-.block-container {
-    padding-top: 2rem !important;
+
+
+def build_css(is_dark: bool) -> str:
+    p = DARK if is_dark else LIGHT
+    return f"""
+<style>
+.stApp {{
+    background: {p['bg']} !important;
+    background-attachment: fixed !important;
+}}
+.block-container {{
+    padding-top: 1.5rem !important;
     padding-bottom: 3rem !important;
     max-width: 1100px !important;
-}
-
-/* Typography */
-html, body, [class*="css"] {
+    position: relative;
+    z-index: 2;
+}}
+html, body, [class*="css"] {{
     font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-    color: var(--text-primary) !important;
-}
+    color: {p['text_primary']} !important;
+}}
+.stApp, .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3,
+.stApp h4, .stApp h5, .stApp h6 {{
+    color: {p['text_primary']} !important;
+}}
 
-/* Logo */
-.logo {
-    font-size: 26px; font-weight: 800;
-    margin-bottom: 18px;
-    color: var(--text-primary);
-}
-.logo span { color: #3b82f6; }
+.logo {{
+    font-size: 26px; font-weight: 800; margin-bottom: 4px;
+    color: {p['text_primary']};
+}}
+.logo span {{ color: #3b82f6; }}
 
-/* Profile card */
-.profile-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+.profile-card {{
+    background: {p['surface']};
+    border: 1px solid {p['border']};
     border-radius: 20px;
     padding: 28px 22px;
     text-align: center;
-    box-shadow: var(--shadow-glow);
-    backdrop-filter: blur(12px);
-}
-.avatar, .avatar-img {
+    box-shadow: {p['shadow_glow']};
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    position: relative;
+    z-index: 2;
+}}
+.avatar, .avatar-img {{
     width: 100px; height: 100px; border-radius: 50%;
     margin: 0 auto 16px; display: block;
-}
-.avatar {
-    background: #dbeafe; color: #2563eb;
+}}
+.avatar {{
+    background: {p['avatar_bg']}; color: {p['avatar_text']};
     display: flex; align-items: center; justify-content: center;
     font-size: 38px; font-weight: 700;
-}
-.avatar-img { object-fit: cover; border: 3px solid #dbeafe; }
-.p-name { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
-.p-nim  { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
-.p-bio  { font-size: 13px; color: var(--text-muted); line-height: 1.55; margin-bottom: 16px; text-align: left; }
-.p-contact { font-size: 13px; color: var(--text-secondary); margin: 5px 0; text-align: left; word-break: break-word; }
+}}
+.avatar-img {{ object-fit: cover; border: 3px solid {p['avatar_bg']}; }}
+.p-name {{ font-size: 20px; font-weight: 700; color: {p['text_primary']}; margin: 0 0 4px; }}
+.p-nim  {{ font-size: 13px; color: {p['text_secondary']}; margin-bottom: 16px; }}
+.p-bio  {{ font-size: 13px; color: {p['text_muted']}; line-height: 1.55; margin-bottom: 16px; text-align: left; }}
+.p-contact {{ font-size: 13px; color: {p['text_secondary']}; margin: 5px 0; text-align: left; word-break: break-word; }}
 
-/* Content cards */
-.card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+.card {{
+    background: {p['surface']};
+    border: 1px solid {p['border']};
     border-radius: 16px;
     padding: 22px;
     margin-bottom: 16px;
-    box-shadow: var(--shadow-card);
-    backdrop-filter: blur(12px);
-}
-.card h3 {
+    box-shadow: {p['shadow_card']};
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    position: relative;
+    z-index: 2;
+}}
+.card h3 {{
     margin: 0 0 14px; font-size: 12px; text-transform: uppercase;
-    letter-spacing: 1.2px; color: var(--text-secondary); font-weight: 700;
-}
+    letter-spacing: 1.2px; color: {p['text_secondary']}; font-weight: 700;
+}}
+.item {{ border-left: 3px solid #667eea; padding: 2px 0 2px 14px; margin-bottom: 14px; }}
+.item:last-child {{ margin-bottom: 0; }}
+.item .t {{ font-weight: 600; font-size: 14px; color: {p['text_primary']}; }}
+.item .s {{ font-size: 12px; color: {p['text_secondary']}; margin-top: 3px; }}
+.item .d {{ font-size: 12px; color: {p['text_muted']}; margin-top: 6px; line-height: 1.5; }}
 
-/* Timeline items */
-.item { border-left: 3px solid #667eea; padding: 2px 0 2px 14px; margin-bottom: 14px; }
-.item:last-child { margin-bottom: 0; }
-.item .t { font-weight: 600; font-size: 14px; color: var(--text-primary); }
-.item .s { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
-.item .d { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
-
-/* Chips */
-.chip {
+.chip {{
     display: inline-block; padding: 5px 12px; margin: 3px;
     border-radius: 100px;
-    background: rgba(102, 126, 234, 0.12);
-    color: #4f46e5;
+    background: {p['chip_bg']}; color: {p['chip_text']};
     font-size: 12px; font-weight: 500;
-}
-
-/* File / project rows */
-.link-row {
+}}
+.link-row {{
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 14px; margin-bottom: 8px;
     border-radius: 10px;
-    background: var(--surface-hover);
-    border: 1px solid var(--border);
-    color: var(--text-primary) !important;
+    background: {p['surface_hover']};
+    border: 1px solid {p['border']};
+    color: {p['text_primary']} !important;
     text-decoration: none !important;
     font-size: 13px;
-    transition: background 0.2s;
-}
-.link-row:hover { background: var(--surface); }
-
-/* Main project button */
-.project-main {
+}}
+.link-row:hover {{ background: {p['surface']}; }}
+.project-main {{
     display: block; padding: 14px; border-radius: 10px;
-    background: var(--gradient-tab);
+    background: {p['gradient_tab']};
     color: #ffffff !important;
     text-decoration: none !important;
     font-weight: 600; text-align: center; font-size: 14px;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    transition: transform 0.2s;
-}
-.project-main:hover { transform: scale(1.02); }
+}}
+.project-main:hover {{ transform: scale(1.02); }}
+.empty {{ font-size: 13px; color: {p['text_faint']}; font-style: italic; padding: 8px 0; }}
 
-/* Empty state */
-.empty { font-size: 13px; color: #94a3b8; font-style: italic; padding: 8px 0; }
-
-/* Streamlit native element tweaks */
-div[data-testid="stTabs"] button {
+/* Tabs */
+div[data-testid="stTabs"] button {{
     border-radius: 8px !important;
     font-weight: 600 !important;
-    font-size: 0.95rem !important;
-    color: var(--text-secondary) !important;
-}
-div[data-testid="stTabs"] button[aria-selected="true"] {
-    background: var(--gradient-tab) !important;
+    color: {p['text_secondary']} !important;
+}}
+div[data-testid="stTabs"] button[aria-selected="true"] {{
+    background: {p['gradient_tab']} !important;
     color: #ffffff !important;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
     border: none !important;
-}
-div[data-testid="stForm"] {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1.2rem;
-    box-shadow: var(--shadow-card);
-    backdrop-filter: blur(12px);
-}
+}}
+
+/* Form */
+div[data-testid="stForm"] {{
+    background: {p['surface']} !important;
+    border: 1px solid {p['border']} !important;
+    border-radius: 16px !important;
+    padding: 1.2rem !important;
+    backdrop-filter: blur(14px);
+    position: relative;
+    z-index: 2;
+}}
+
+/* Inputs */
+.stTextInput input, .stTextArea textarea, .stNumberInput input {{
+    background: {p['surface_hover']} !important;
+    color: {p['text_primary']} !important;
+    border: 1px solid {p['border']} !important;
+}}
+div[data-baseweb="select"] > div {{
+    background: {p['surface_hover']} !important;
+    color: {p['text_primary']} !important;
+    border-color: {p['border']} !important;
+}}
+
+/* Wave */
+.ecv-wave-bg {{
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 240px;
+    z-index: 1;
+    pointer-events: none;
+}}
 </style>
 """
-st.markdown(CSS, unsafe_allow_html=True)
+
+
+def build_wave(is_dark: bool) -> str:
+    p = DARK if is_dark else LIGHT
+    return f"""
+<svg class="ecv-wave-bg" viewBox="0 0 1440 240" preserveAspectRatio="none"
+     xmlns="http://www.w3.org/2000/svg">
+    <path fill="{p['wave_1']}"
+          d="M0,120 C240,40 480,200 720,140 C960,80 1200,200 1440,140 L1440,240 L0,240 Z">
+        <animate attributeName="d" dur="14s" repeatCount="indefinite"
+            values="M0,120 C240,40 480,200 720,140 C960,80 1200,200 1440,140 L1440,240 L0,240 Z;
+                    M0,140 C240,200 480,60 720,120 C960,180 1200,40 1440,160 L1440,240 L0,240 Z;
+                    M0,120 C240,40 480,200 720,140 C960,80 1200,200 1440,140 L1440,240 L0,240 Z" />
+    </path>
+    <path fill="{p['wave_2']}"
+          d="M0,160 C240,100 480,240 720,180 C960,120 1200,240 1440,180 L1440,240 L0,240 Z">
+        <animate attributeName="d" dur="18s" repeatCount="indefinite"
+            values="M0,160 C240,100 480,240 720,180 C960,120 1200,240 1440,180 L1440,240 L0,240 Z;
+                    M0,180 C240,240 480,120 720,160 C960,220 1200,100 1440,200 L1440,240 L0,240 Z;
+                    M0,160 C240,100 480,240 720,180 C960,120 1200,240 1440,180 L1440,240 L0,240 Z" />
+    </path>
+    <path fill="{p['wave_3']}"
+          d="M0,200 C240,160 480,260 720,220 C960,180 1200,280 1440,220 L1440,240 L0,240 Z">
+        <animate attributeName="d" dur="22s" repeatCount="indefinite"
+            values="M0,200 C240,160 480,260 720,220 C960,180 1200,280 1440,220 L1440,240 L0,240 Z;
+                    M0,220 C240,260 480,160 720,200 C960,240 1200,140 1440,240 L1440,240 L0,240 Z;
+                    M0,200 C240,160 480,260 720,220 C960,180 1200,280 1440,220 L1440,240 L0,240 Z" />
+    </path>
+</svg>
+"""
 
 
 # ════════════════════════════════════════════════════════════════════
-# 7. PUBLIC VIEW
+# 7. TOPBAR (shared across all views)
+# ════════════════════════════════════════════════════════════════════
+def render_topbar():
+    is_admin = st.session_state.logged_in_as is not None
+
+    if is_admin:
+        c1, c2, c3 = st.columns([4, 1, 1])
+    else:
+        c1, c2 = st.columns([5, 1])
+        c3 = None
+
+    with c1:
+        title = "E-<span>CV</span> · Admin" if is_admin else "E-<span>CV</span>"
+        st.markdown(f'<div class="logo">{title}</div>', unsafe_allow_html=True)
+
+    with c2:
+        st.toggle("🌙", key="dark_mode", help="Mode Gelap")
+
+    if c3 is not None:
+        with c3:
+            if st.button("🚪 Keluar", type="primary", use_container_width=True):
+                st.session_state.logged_in_as = None
+                st.session_state.is_master = False
+                st.session_state.flash = None
+                st.query_params.clear()
+                st.rerun()
+
+
+# ════════════════════════════════════════════════════════════════════
+# 8. PUBLIC VIEW BODY
 # ════════════════════════════════════════════════════════════════════
 def render_public_view(users: list):
-    st.markdown('<div class="logo">E-<span>CV</span></div>', unsafe_allow_html=True)
-
     tabs = st.tabs([u["name"] for u in users])
 
     for tab, u in zip(tabs, users):
@@ -474,10 +577,9 @@ def render_public_view(users: list):
 
 
 # ════════════════════════════════════════════════════════════════════
-# 8. LOGIN VIEW
+# 9. LOGIN VIEW BODY
 # ════════════════════════════════════════════════════════════════════
 def render_login_page(data: dict):
-    st.markdown('<div class="logo">E-<span>CV</span> · Admin</div>', unsafe_allow_html=True)
     st.subheader("🔐 Login Admin")
     st.caption("Masukkan NIM dan sandi Anda, atau `master` dan sandi master.")
 
@@ -515,35 +617,24 @@ def render_login_page(data: dict):
 
 
 # ════════════════════════════════════════════════════════════════════
-# 9. ADMIN PANEL
+# 10. ADMIN PANEL BODY
 # ════════════════════════════════════════════════════════════════════
 def render_admin_panel(data: dict):
     is_master = st.session_state.is_master
     current_user_id = st.session_state.logged_in_as
 
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        st.title("🔐 Admin Panel")
-        if is_master:
-            st.caption("Masuk sebagai **Master Admin**")
-        else:
-            cu = next(u for u in data["users"] if u["id"] == current_user_id)
-            st.caption(f"Masuk sebagai **{cu['name']}** ({cu['nim']})")
-        if not CLOUDINARY_READY:
-            st.warning("⚠️ Cloudinary belum dikonfigurasi — unggah berkas dinonaktifkan.")
-    with col2:
-        if st.button("🚪 Keluar", type="primary", use_container_width=True):
-            st.session_state.logged_in_as = None
-            st.session_state.is_master = False
-            st.session_state.flash = None
-            st.query_params.clear()
-            st.rerun()
+    if is_master:
+        st.caption("Masuk sebagai **Master Admin**")
+    else:
+        cu = next(u for u in data["users"] if u["id"] == current_user_id)
+        st.caption(f"Masuk sebagai **{cu['name']}** ({cu['nim']})")
+
+    if not CLOUDINARY_READY:
+        st.warning("⚠️ Cloudinary belum dikonfigurasi — unggah berkas dinonaktifkan.")
 
     if st.session_state.flash:
         st.success(st.session_state.flash)
         st.session_state.flash = None
-
-    st.divider()
 
     if is_master:
         options = {f"{u['name']} ({u['nim']})": u["id"] for u in data["users"]}
@@ -554,19 +645,14 @@ def render_admin_panel(data: dict):
 
     target_user = next(u for u in data["users"] if u["id"] == target_user_id)
 
-    if is_master:
-        tab_labels = ["📝 Edit Data", "📁 Berkas", "🔄 Reset Sandi"]
-    else:
-        tab_labels = ["📝 Edit Data", "📁 Berkas", "🔑 Ubah Sandi"]
+    tab_labels = (["📝 Edit Data", "📁 Berkas", "🔄 Reset Sandi"] if is_master
+                  else ["📝 Edit Data", "📁 Berkas", "🔑 Ubah Sandi"])
 
     tabs = st.tabs(tab_labels)
-
     with tabs[0]:
         render_edit_data_tab(target_user, data)
-
     with tabs[1]:
         render_files_tab(target_user, data)
-
     with tabs[2]:
         if is_master:
             render_reset_password_tab(target_user, data)
@@ -575,7 +661,6 @@ def render_admin_panel(data: dict):
 
 
 def render_edit_data_tab(u: dict, data: dict):
-    # ── Foto Profil ──
     st.markdown("#### Foto Profil")
     av_col1, av_col2 = st.columns([1, 3])
     with av_col1:
@@ -789,16 +874,22 @@ def render_reset_password_tab(u: dict, data: dict):
 
 
 # ════════════════════════════════════════════════════════════════════
-# 10. ROUTING
+# 11. ROUTING
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
-is_logged_in = st.session_state.logged_in_as is not None
-admin_mode = st.query_params.get("admin") == "1"
+# Step A — Topbar (contains dark mode toggle; updates st.session_state.dark_mode)
+render_topbar()
 
-if is_logged_in:
+# Step B — CSS + Wave, now reflecting the current dark mode state
+is_dark = st.session_state.dark_mode
+st.markdown(build_css(is_dark), unsafe_allow_html=True)
+st.markdown(build_wave(is_dark), unsafe_allow_html=True)
+
+# Step C — Route to view body
+if st.session_state.logged_in_as:
     render_admin_panel(data)
-elif admin_mode:
+elif st.query_params.get("admin") == "1":
     render_login_page(data)
 else:
     render_public_view(data["users"])
