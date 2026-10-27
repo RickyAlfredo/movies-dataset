@@ -1,5 +1,5 @@
 """
-E-CV — Final Layout matching Node.js UI.
+E-CV — Final Layout & Custom CRUD matching Node.js UI.
 """
 
 import hashlib
@@ -76,17 +76,6 @@ def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(
 def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
 def save_data(data: dict) -> None: DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
-def df_to_records(df, columns: list) -> list:
-    if df is None or df.empty: return []
-    records = []
-    for _, row in df.iterrows():
-        rec = {}
-        for col in columns:
-            v = row.get(col)
-            rec[col] = "" if pd.isna(v) else str(v).strip()
-        if any(rec.values()): records.append(rec)
-    return records
-
 # ════════════════════════════════════════════════════════════════════
 # 4. SEED + PERSISTENCE
 # ════════════════════════════════════════════════════════════════════
@@ -99,7 +88,6 @@ SEED = {
         {
             "id": "user1", "name": "Nama User 1", "role": "Frontend Developer", "nim": "220010001",
             "email": "email@example.com", "phone": "08123456789", "location": "Jakarta",
-            "linkedin": "linkedin.com/in/user1", "github": "github.com/user1",
             "bio": "Deskripsi profil singkat untuk User 1.",
             "password": "password123", "profilePicture": "",
             "education": [
@@ -116,7 +104,6 @@ SEED = {
         {
             "id": "user2", "name": "Nama User 2", "role": "Backend Developer", "nim": "220010002",
             "email": "user2@example.com", "phone": "08123456780", "location": "Bandung",
-            "linkedin": "", "github": "",
             "bio": "Deskripsi profil singkat untuk User 2.",
             "password": "password123", "profilePicture": "",
             "education": [{"degree": "S1 Sistem Informasi", "institution": "ITB", "year": "2021 - Sekarang"}],
@@ -126,7 +113,6 @@ SEED = {
         {
             "id": "user3", "name": "Nama User 3", "role": "UI/UX Designer", "nim": "220010003",
             "email": "user3@example.com", "phone": "08123456781", "location": "Surabaya",
-            "linkedin": "", "github": "",
             "bio": "Deskripsi profil singkat untuk User 3.",
             "password": "password123", "profilePicture": "",
             "education": [{"degree": "S1 Desain", "institution": "ITS", "year": "2020 - Sekarang"}],
@@ -158,8 +144,6 @@ def load_and_migrate() -> dict:
         u.setdefault("files", [])
         u.setdefault("role", "")
         u.setdefault("location", "")
-        u.setdefault("linkedin", "")
-        u.setdefault("github", "")
     if changed:
         DATA_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return data
@@ -212,7 +196,7 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
     text-align: center; color: #94a3b8; font-size: 1rem; margin-bottom: 2rem;
 }
 
-/* Cards (glassmorphism) */
+/* Glass Cards */
 .glass-card {
     background: rgba(30, 41, 59, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -221,7 +205,7 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
     margin-bottom: 20px;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 .card-header {
     font-size: 0.85rem; font-weight: 700; color: #cbd5e1;
@@ -231,6 +215,14 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .card-header::before {
     content: ''; display: inline-block; width: 4px; height: 16px;
     background: #8b5cf6; border-radius: 2px;
+}
+
+/* Centered Tabs Wrapper */
+.centered-tabs-wrapper {
+    display: flex; justify-content: center; margin-bottom: 24px;
+}
+.centered-tabs-wrapper .glass-card {
+    padding: 8px 16px; margin-bottom: 0; border-radius: 12px;
 }
 
 /* Profile Sidebar */
@@ -290,9 +282,8 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link:hover { background: rgba(139, 92, 246, 0.2); }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
 
-/* Tabs */
-div[data-testid="stTabs"] { justify-content: center; }
-div[data-testid="stTabs"] > div > div { background: transparent !important; gap: 8px; }
+/* Tabs Override */
+div[data-testid="stTabs"] > div > div { background: transparent !important; gap: 8px; justify-content: center; }
 div[data-testid="stTabs"] button {
     border-radius: 8px !important; font-weight: 600 !important; font-size: 0.9rem !important;
     color: #94a3b8 !important; background: transparent !important; border: 1px solid transparent !important;
@@ -320,6 +311,29 @@ div[data-testid="stForm"] button {
 }
 .stButton > button {
     border-radius: 8px !important; font-weight: 600 !important;
+}
+
+/* Custom CRUD Row styling */
+.crud-row {
+    display: flex; gap: 10px; align-items: center; margin-bottom: 8px;
+}
+.crud-input {
+    flex: 1; background: #0f172a !important; color: #f8fafc !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 8px !important;
+    padding: 10px 14px !important; font-size: 0.9rem !important;
+}
+.delete-btn button {
+    background: rgba(239, 68, 68, 0.2) !important; color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important; border-radius: 8px !important;
+    padding: 8px 12px !important;
+}
+.delete-btn button:hover {
+    background: rgba(239, 68, 68, 0.3) !important;
+}
+.add-btn button {
+    background: transparent !important; color: #a78bfa !important;
+    border: 1px dashed rgba(139, 92, 246, 0.5) !important; border-radius: 8px !important;
+    width: 100%; margin-top: 8px;
 }
 
 /* Wave Background */
@@ -355,27 +369,29 @@ def render_public_view(users: list):
     st.markdown('<h1 class="title-main">E-CV Kelompok</h1>', unsafe_allow_html=True)
     st.markdown('<p class="subtitle-main">Silakan pilih tab di bawah untuk melihat profil dan mengunduh berkas.</p>', unsafe_allow_html=True)
 
-    tabs = st.tabs([u["name"] for u in users])
+    # Centered Tabs in Glass Card
+    _, col_tabs, _ = st.columns([1, 2, 1])
+    with col_tabs:
+        with st.container():
+            st.markdown('<div class="centered-tabs-wrapper"><div class="glass-card" style="width: 100%; padding: 8px;">', unsafe_allow_html=True)
+            tabs = st.tabs([u["name"] for u in users])
+            st.markdown('</div></div>', unsafe_allow_html=True)
 
     for tab, u in zip(tabs, users):
         with tab:
             col_left, col_right = st.columns([1, 2.2], gap="large")
 
             with col_left:
-                # Avatar
                 if u.get("profilePicture"):
                     avatar_html = f'<img class="profile-img" src="{esc(u["profilePicture"])}" alt="avatar" />'
                 else:
                     initial = esc((u["name"] or "?")[0].upper())
                     avatar_html = f'<div class="profile-img-container">{initial}</div>'
 
-                # Contact Links
                 contacts = []
                 if u.get("email"): contacts.append(f'<a href="mailto:{esc(u["email"])}" class="contact-item"><div class="contact-icon">✉</div> {esc(u["email"])}</a>')
                 if u.get("phone"): contacts.append(f'<a href="tel:{esc(u["phone"])}" class="contact-item"><div class="contact-icon">📞</div> {esc(u["phone"])}</a>')
                 if u.get("location"): contacts.append(f'<div class="contact-item"><div class="contact-icon">📍</div> {esc(u["location"])}</div>')
-                if u.get("linkedin"): contacts.append(f'<a href="https://{esc(u["linkedin"])}" target="_blank" class="contact-item"><div class="contact-icon">in</div> LinkedIn</a>')
-                if u.get("github"): contacts.append(f'<a href="https://{esc(u["github"])}" target="_blank" class="contact-item"><div class="contact-icon">🐙</div> GitHub</a>')
                 
                 contact_html = "".join(contacts) or '<div class="text-muted">Belum ada kontak.</div>'
 
@@ -461,7 +477,11 @@ def render_login_page(data: dict):
             st.query_params.clear()
             st.rerun()
 
-        tab1, tab2 = st.tabs(["Login Pengguna", "Login Master"])
+        # Centered Login Tabs in Glass Card
+        with st.container():
+            st.markdown('<div class="centered-tabs-wrapper"><div class="glass-card" style="width: 100%; padding: 8px;">', unsafe_allow_html=True)
+            tab1, tab2 = st.tabs(["Login Pengguna", "Login Master"])
+            st.markdown('</div></div>', unsafe_allow_html=True)
         
         with tab1:
             with st.form("login_user"):
@@ -537,8 +557,11 @@ def render_admin_panel(data: dict):
         st.success(st.session_state.flash)
         st.session_state.flash = None
 
-    # Tabs
-    tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
+    # Centered Admin Tabs in Glass Card
+    with st.container():
+        st.markdown('<div class="centered-tabs-wrapper"><div class="glass-card" style="width: 100%; padding: 8px;">', unsafe_allow_html=True)
+        tab_edit, tab_files, tab_pwd = st.tabs(["Edit Data", "Kelola Berkas", "Ubah Sandi"])
+        st.markdown('</div></div>', unsafe_allow_html=True)
 
     with tab_edit:
         render_edit_data_tab(target_user, data)
@@ -554,6 +577,15 @@ def render_admin_panel(data: dict):
 def render_edit_data_tab(u: dict, data: dict):
     version = st.session_state.save_version
     key_base = f"{u['id']}_{version}"
+
+    # Initialize lists in session state
+    if f"edu_list_{u['id']}" not in st.session_state:
+        st.session_state[f"edu_list_{u['id']}"] = list(u.get("education") or [])
+    if f"exp_list_{u['id']}" not in st.session_state:
+        st.session_state[f"exp_list_{u['id']}"] = list(u.get("experience") or [])
+
+    edu_list = st.session_state[f"edu_list_{u['id']}"]
+    exp_list = st.session_state[f"exp_list_{u['id']}"]
 
     with st.form(f"edit_form_{key_base}"):
         # Foto Profile
@@ -592,23 +624,57 @@ def render_edit_data_tab(u: dict, data: dict):
 
         # Row 3 (Contact)
         st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-top: 8px; margin-bottom: 8px;">Kontak</div>', unsafe_allow_html=True)
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3 = st.columns(3)
         with c1: email = st.text_input("EMAIL", value=u.get("email", ""), key=f"email_{key_base}")
         with c2: phone = st.text_input("TELEPON", value=u.get("phone", ""), key=f"phone_{key_base}")
         with c3: location = st.text_input("LOKASI", value=u.get("location", ""), key=f"loc_{key_base}")
-        with c4: linkedin = st.text_input("LINKEDIN", value=u.get("linkedin", ""), key=f"li_{key_base}")
-        with c5: github = st.text_input("GITHUB", value=u.get("github", ""), key=f"gh_{key_base}")
 
         st.divider()
 
-        # Lists (using data_editor for simplicity and cleaner UI within a form)
+        # Custom CRUD for Pendidikan
         st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Pendidikan</div>', unsafe_allow_html=True)
-        edu_df = pd.DataFrame(u.get("education") or [], columns=["degree", "institution", "year"])
-        edited_edu = st.data_editor(edu_df, num_rows="dynamic", use_container_width=True, key=f"edu_{key_base}")
+        for i, edu in enumerate(edu_list):
+            cols = st.columns([3, 3, 2, 1])
+            edu["degree"] = cols[0].text_input("Gelar", value=edu.get("degree", ""), key=f"edu_deg_{i}", label_visibility="collapsed")
+            edu["institution"] = cols[1].text_input("Institusi", value=edu.get("institution", ""), key=f"edu_inst_{i}", label_visibility="collapsed")
+            edu["year"] = cols[2].text_input("Tahun", value=edu.get("year", ""), key=f"edu_year_{i}", label_visibility="collapsed")
+            with cols[3]:
+                st.markdown('<div class="delete-btn">', unsafe_allow_html=True)
+                if st.form_submit_button("✕", key=f"del_edu_{i}"):
+                    edu_list.pop(i)
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="add-btn">', unsafe_allow_html=True)
+        if st.form_submit_button("+ Tambah Pendidikan"):
+            edu_list.append({"degree": "", "institution": "", "year": ""})
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        st.divider()
+
+        # Custom CRUD for Pengalaman
         st.markdown('<div style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px;">Pengalaman</div>', unsafe_allow_html=True)
-        exp_df = pd.DataFrame(u.get("experience") or [], columns=["role", "company", "year", "description"])
-        edited_exp = st.data_editor(exp_df, num_rows="dynamic", use_container_width=True, key=f"exp_{key_base}")
+        for i, exp in enumerate(exp_list):
+            cols = st.columns([3, 3, 2, 1])
+            exp["role"] = cols[0].text_input("Peran", value=exp.get("role", ""), key=f"exp_role_{i}", label_visibility="collapsed")
+            exp["company"] = cols[1].text_input("Perusahaan", value=exp.get("company", ""), key=f"exp_comp_{i}", label_visibility="collapsed")
+            exp["year"] = cols[2].text_input("Tahun", value=exp.get("year", ""), key=f"exp_year_{i}", label_visibility="collapsed")
+            with cols[3]:
+                st.markdown('<div class="delete-btn">', unsafe_allow_html=True)
+                if st.form_submit_button("✕", key=f"del_exp_{i}"):
+                    exp_list.pop(i)
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            desc_cols = st.columns([9, 1])
+            exp["description"] = desc_cols[0].text_area("Deskripsi", value=exp.get("description", ""), key=f"exp_desc_{i}", label_visibility="collapsed", height=60)
+        
+        st.markdown('<div class="add-btn">', unsafe_allow_html=True)
+        if st.form_submit_button("+ Tambah Pengalaman"):
+            exp_list.append({"role": "", "company": "", "year": "", "description": ""})
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
         st.divider()
 
@@ -621,8 +687,9 @@ def render_edit_data_tab(u: dict, data: dict):
         with c1: mp_name = st.text_input("LINK PROYEK UTAMA (NAMA)", value=mp.get("name", ""), key=f"mpname_{key_base}")
         with c2: mp_url = st.text_input("LINK PROYEK UTAMA (URL)", value=mp.get("url", ""), key=f"mpurl_{key_base}")
 
-        proj_df = pd.DataFrame(u.get("otherProjects") or [], columns=["name", "url"])
-        edited_proj = st.data_editor(proj_df, num_rows="dynamic", use_container_width=True, key=f"proj_{key_base}")
+        # Convert other projects to single text area (one per line)
+        other_proj_str = "\\n".join([p.get("url", "") for p in u.get("otherProjects", [])])
+        other_proj_input = st.text_area("PROYEK LAINNYA (SATU PER BARIS)", value=other_proj_str, key=f"proj_{key_base}")
 
         # Save Button
         submitted = st.form_submit_button("Simpan Perubahan", type="primary", use_container_width=True)
@@ -635,13 +702,20 @@ def render_edit_data_tab(u: dict, data: dict):
         u["email"] = email.strip()
         u["phone"] = phone.strip()
         u["location"] = location.strip()
-        u["linkedin"] = linkedin.strip()
-        u["github"] = github.strip()
         u["skills"] = [s.strip() for s in skills_text.split(",") if s.strip()]
-        u["education"] = df_to_records(edited_edu, ["degree", "institution", "year"])
-        u["experience"] = df_to_records(edited_exp, ["role", "company", "year", "description"])
+        
+        # Save dynamic lists
+        u["education"] = [e for e in edu_list if any(e.values())]
+        u["experience"] = [e for e in exp_list if any(e.values())]
+        
         u["mainProject"] = {"name": mp_name.strip(), "url": mp_url.strip()}
-        u["otherProjects"] = df_to_records(edited_proj, ["name", "url"])
+        
+        # Parse other projects (format: "url" or "name | url")
+        new_other_projects = []
+        for line in other_proj_input.split("\\n"):
+            if line.strip():
+                new_other_projects.append({"name": "Lihat Proyek", "url": line.strip()})
+        u["otherProjects"] = new_other_projects
         
         save_data(data)
         st.session_state.save_version += 1
