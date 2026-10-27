@@ -1,5 +1,5 @@
 """
-E-CV — Step 6: Exact repo colors, visible dark toggle, and keyboard shortcuts.
+E-CV — Step 7: UI toggles, dynamic icons, fixed keystrokes.
 """
 
 import hashlib
@@ -25,47 +25,60 @@ st.set_page_config(
 )
 
 # ════════════════════════════════════════════════════════════════════
-# 2. KEYBOARD SHORTCUTS (Invisible iframe trick)
+# 2. KEYBOARD SHORTCUTS (Robust iframe injection)
 # ════════════════════════════════════════════════════════════════════
 components.html("""
 <script>
-function attachKeyboardListeners() {
-    try {
-        const pDoc = window.parent.document;
-        const pWin = window.parent;
-        
-        // Hide Streamlit UI by default
-        pDoc.body.classList.add('hide-admin-ui');
+(function() {
+    function init() {
+        try {
+            // Find the main Streamlit window
+            let doc = window.parent.document;
+            if (!doc.querySelector('.stApp')) {
+                doc = window.parent.parent.document;
+            }
+            
+            if (!doc || !doc.querySelector('.stApp')) {
+                setTimeout(init, 500);
+                return;
+            }
 
-        let buffer = "";
-        pDoc.addEventListener("keydown", function(e) {
-            if (e.key.length === 1) {
-                buffer = (buffer + e.key.toLowerCase()).slice(-20);
-                
-                // 1. Admin trigger (capstone12 or kapstone12)
-                if (buffer.includes("capstone12") || buffer.includes("kapstone12")) {
-                    buffer = "";
-                    const url = new URL(pWin.location.href);
-                    url.searchParams.set("admin", "1");
-                    pWin.location.href = url.href;
-                }
-                
-                // 2. Toggle Streamlit UI (admin12)
-                if (buffer.includes("admin12")) {
-                    buffer = "";
-                    if (pDoc.body.classList.contains('hide-admin-ui')) {
-                        pDoc.body.classList.remove('hide-admin-ui');
-                    } else {
-                        pDoc.body.classList.add('hide-admin-ui');
+            let buffer = "";
+            doc.addEventListener("keydown", function(e) {
+                if (e.key.length === 1) {
+                    buffer = (buffer + e.key.toLowerCase()).slice(-20);
+                    
+                    // 1. Admin login (kapstone12 or capstone12)
+                    if (buffer.includes("kapstone12") || buffer.includes("capstone12")) {
+                        buffer = "";
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const url = new URL(window.parent.location.href);
+                        url.searchParams.set("admin", "1");
+                        window.parent.location.href = url.href;
+                    }
+                    
+                    // 2. Toggle Streamlit UI (admin12)
+                    if (buffer.includes("admin12")) {
+                        buffer = "";
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const url = new URL(window.parent.location.href);
+                        if (url.searchParams.has("show_ui")) {
+                            url.searchParams.delete("show_ui");
+                        } else {
+                            url.searchParams.set("show_ui", "1");
+                        }
+                        window.parent.location.href = url.href;
                     }
                 }
-            }
-        });
-    } catch (e) {
-        console.log("Cross-origin error:", e);
+            }, true);
+        } catch (e) {
+            setTimeout(init, 500);
+        }
     }
-}
-attachKeyboardListeners();
+    init();
+})();
 </script>
 """, height=0, width=0)
 
@@ -267,7 +280,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ════════════════════════════════════════════════════════════════════
-# 7. THEME PALETTES (Exact copy from repo)
+# 7. THEME PALETTES
 # ════════════════════════════════════════════════════════════════════
 LIGHT = {
     "bg":            "#f4f7f6",
@@ -315,18 +328,19 @@ DARK = {
 
 def build_css(is_dark: bool) -> str:
     p = DARK if is_dark else LIGHT
+    
+    # Check if the user typed admin12 to show the UI
+    show_ui = st.query_params.get("show_ui") == "1"
+    hide_ui_css = "" if show_ui else """
+    header[data-testid="stHeader"], #MainMenu, footer, [data-testid="stStatusWidget"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    """
+
     return f"""
 <style>
-/* Hide Streamlit UI by default (toggled by 'admin12' keystroke) */
-body.hide-admin-ui header,
-body.hide-admin-ui [data-testid="stHeader"],
-body.hide-admin-ui #MainMenu,
-body.hide-admin-ui footer,
-body.hide-admin-ui [data-testid="stStatusWidget"] {{
-    display: none !important;
-    visibility: hidden !important;
-}}
-
+{hide_ui_css}
 .stApp {{
     background: {p['bg']} !important;
     background-attachment: fixed !important;
@@ -476,6 +490,15 @@ div[data-baseweb="select"] > div {{
     z-index: 1;
     pointer-events: none;
 }}
+
+/* Style the toggle card container */
+div[data-testid="stVerticalBlockBorderWrapper"] {{
+    background: {p['surface']} !important;
+    backdrop-filter: blur(14px);
+    border-radius: 10px;
+    box-shadow: {p['shadow_card']};
+    padding: 4px 16px !important;
+}}
 </style>
 """
 
@@ -509,23 +532,25 @@ def build_wave(is_dark: bool) -> str:
 """
 
 # ════════════════════════════════════════════════════════════════════
-# 8. TOPBAR (Visible Dark Mode Toggle)
+# 8. TOPBAR
 # ════════════════════════════════════════════════════════════════════
 def render_topbar():
     is_admin = st.session_state.logged_in_as is not None
 
     if is_admin:
-        c1, c2, c3 = st.columns([6, 1, 1])
+        c1, c2, c3 = st.columns([6, 2, 1])
     else:
-        c1, c2, c3 = st.columns([8, 1, 1])
+        c1, c2, c3 = st.columns([7, 2, 1])
 
     with c1:
         title = "E-<span>CV</span> · Admin" if is_admin else "E-<span>CV</span>"
         st.markdown(f'<div class="logo">{title}</div>', unsafe_allow_html=True)
 
     with c2:
-        # Force the toggle to be visible
-        st.toggle("🌙 Gelap", key="dark_mode")
+        # Wrap in a native container to get a card background
+        with st.container(border=True):
+            label = "☀️ Mode Terang" if st.session_state.dark_mode else "🌙 Mode Gelap"
+            st.toggle(label, key="dark_mode")
 
     if is_admin:
         with c3:
@@ -913,7 +938,7 @@ def render_reset_password_tab(u: dict, data: dict):
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
-# Render topbar (this now holds the dark mode toggle directly on the page)
+# Render topbar
 render_topbar()
 
 # Apply exact colors and wave
