@@ -1,5 +1,5 @@
 """
-E-CV — Step 8: Default Dark Mode, removed keystroke triggers.
+E-CV — Final Version: Hardcoded Dark Mode using exact repo colors.
 Access admin via URL param:   ?admin=1
 Default credentials:
     Master:  master / capstone12
@@ -221,60 +221,36 @@ for key, default in [
     ("flash", None),
     ("file_upload_version", 0),
     ("avatar_upload_version", 0),
-    ("dark_mode", True),  # <--- Default is now DARK mode
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
 
 # ════════════════════════════════════════════════════════════════════
-# 6. THEME PALETTES
+# 6. DARK THEME PALETTE (Exact copy from repo css)
 # ════════════════════════════════════════════════════════════════════
-LIGHT = {
-    "bg":            "#f4f7f6",
-    "surface":       "rgba(255, 255, 255, 0.8)",
-    "surface_hover": "rgba(255, 255, 255, 0.95)",
-    "border":        "rgba(0, 0, 0, 0.1)",
-    "text_primary":  "#333333",
-    "text_secondary":"#666666",
-    "text_muted":    "#555555",
-    "text_faint":    "#999999",
-    "shadow_glow":   "0 8px 32px rgba(0, 0, 0, 0.05)",
-    "shadow_card":   "0 4px 16px rgba(0, 0, 0, 0.03)",
-    "link":          "#667eea",
-    "gradient_tab":  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "chip_bg":       "rgba(102, 126, 234, 0.1)",
-    "chip_text":     "#667eea",
-    "avatar_bg":     "#e2e8f0",
-    "avatar_text":   "#667eea",
-    "wave_1":        "rgba(102, 126, 234, 0.1)",
-    "wave_2":        "rgba(118, 75, 162, 0.08)",
-    "wave_3":        "rgba(102, 126, 234, 0.05)",
-}
-
 DARK = {
-    "bg":            "#1a1a2e",
-    "surface":       "rgba(30, 30, 50, 0.7)",
-    "surface_hover": "rgba(40, 40, 65, 0.9)",
-    "border":        "rgba(255, 255, 255, 0.1)",
-    "text_primary":  "#e0e0e0",
-    "text_secondary":"#a0a0b0",
-    "text_muted":    "#c0c0d0",
-    "text_faint":    "#808090",
+    "bg":            "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    "surface":       "rgba(30, 41, 59, 0.7)",
+    "surface_hover": "rgba(51, 65, 85, 0.8)",
+    "border":        "rgba(71, 85, 105, 0.6)",
+    "text_primary":  "#f8fafc",
+    "text_secondary":"#94a3b8",
+    "text_muted":    "#cbd5e1",
+    "input_bg":      "rgba(15, 23, 42, 0.6)",
+    "input_border":  "rgba(71, 85, 105, 0.6)",
     "shadow_glow":   "0 8px 32px rgba(0, 0, 0, 0.4)",
     "shadow_card":   "0 4px 16px rgba(0, 0, 0, 0.2)",
-    "link":          "#8a9cff",
-    "gradient_tab":  "linear-gradient(135deg, #8a9cff 0%, #a78bfa 100%)",
-    "chip_bg":       "rgba(138, 156, 255, 0.15)",
-    "chip_text":     "#8a9cff",
-    "avatar_bg":     "#2a2a4a",
-    "avatar_text":   "#8a9cff",
-    "wave_1":        "rgba(138, 156, 255, 0.05)",
-    "wave_2":        "rgba(167, 139, 250, 0.05)",
-    "wave_3":        "rgba(138, 156, 255, 0.03)",
+    "btn_sec_bg":    "rgba(30, 41, 59, 0.6)",
+    "link":          "#a78bfa",
+    "link_hover":    "#c4b5fd",
+    "gradient_tab":  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    "wave_1":        "rgba(56, 189, 248, 0.15)",
+    "wave_2":        "rgba(56, 189, 248, 0.08)",
+    "wave_3":        "rgba(56, 189, 248, 0.03)",
 }
 
-def build_css(is_dark: bool) -> str:
-    p = DARK if is_dark else LIGHT
+def build_css() -> str:
+    p = DARK
     
     # Always hide the Streamlit header, manage app button, etc.
     hide_ui_css = """
@@ -311,119 +287,159 @@ html, body, [class*="css"] {{
     font-size: 26px; font-weight: 800; margin-bottom: 4px;
     color: {p['text_primary']};
 }}
-.logo span {{ color: {p['link']}; }}
+.logo span {{ color: #667eea; }}
 
 .profile-card {{
     background: {p['surface']};
     border: 1px solid {p['border']};
     border-radius: 20px;
-    padding: 28px 22px;
+    padding: 32px 24px;
     text-align: center;
     box-shadow: {p['shadow_glow']};
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: relative;
     z-index: 2;
 }}
 .avatar, .avatar-img {{
     width: 100px; height: 100px; border-radius: 50%;
-    margin: 0 auto 16px; display: block;
+    margin: 0 auto 20px; display: block;
+    border: 4px solid {p['surface']};
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }}
 .avatar {{
-    background: {p['avatar_bg']}; color: {p['avatar_text']};
+    background: {p['surface']}; color: {p['text_primary']};
     display: flex; align-items: center; justify-content: center;
     font-size: 38px; font-weight: 700;
 }}
-.avatar-img {{ object-fit: cover; border: 3px solid {p['avatar_bg']}; }}
-.p-name {{ font-size: 20px; font-weight: 700; color: {p['text_primary']}; margin: 0 0 4px; }}
-.p-nim  {{ font-size: 13px; color: {p['text_secondary']}; margin-bottom: 16px; }}
-.p-bio  {{ font-size: 13px; color: {p['text_muted']}; line-height: 1.55; margin-bottom: 16px; text-align: left; }}
-.p-contact {{ font-size: 13px; color: {p['text_secondary']}; margin: 5px 0; text-align: left; word-break: break-word; }}
+.avatar-img {{ object-fit: cover; }}
+.p-name {{ font-size: 1.5rem; font-weight: 700; color: {p['text_primary']}; margin: 0 0 4px; }}
+.p-role {{ color: #667eea; font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; }}
+.p-nim  {{ font-size: 0.85rem; color: {p['text_secondary']}; background: rgba(255,255,255,0.1); display: inline-block; padding: 4px 12px; border-radius: 999px; margin-bottom: 16px; }}
+.p-bio  {{ font-size: 0.95rem; color: {p['text_muted']}; line-height: 1.75; margin-bottom: 16px; text-align: left; }}
+.p-contact {{ display: block; font-size: 0.9rem; color: {p['text_secondary']}; margin: 5px 0; text-align: left; word-break: break-all; transition: color 0.2s ease; }}
+.p-contact:hover {{ color: {p['link_hover']}; }}
 
 .card {{
     background: {p['surface']};
     border: 1px solid {p['border']};
-    border-radius: 16px;
-    padding: 22px;
-    margin-bottom: 16px;
-    box-shadow: {p['shadow_card']};
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    border-radius: 20px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: {p['shadow_glow']};
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: relative;
     z-index: 2;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }}
+.card:hover {{ transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.12); }}
 .card h3 {{
-    margin: 0 0 14px; font-size: 12px; text-transform: uppercase;
-    letter-spacing: 1.2px; color: {p['text_secondary']}; font-weight: 700;
+    margin: 0 0 16px; font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 0.1em; color: {p['text_secondary']}; font-weight: 700;
 }}
-.item {{ border-left: 3px solid {p['link']}; padding: 2px 0 2px 14px; margin-bottom: 14px; }}
+.item {{ position: relative; padding-left: 20px; border-left: 2px solid rgba(102,126,234,0.3); margin-bottom: 16px; }}
 .item:last-child {{ margin-bottom: 0; }}
-.item .t {{ font-weight: 600; font-size: 14px; color: {p['text_primary']}; }}
-.item .s {{ font-size: 12px; color: {p['text_secondary']}; margin-top: 3px; }}
-.item .d {{ font-size: 12px; color: {p['text_muted']}; margin-top: 6px; line-height: 1.5; }}
+.item::before {{
+    content: ''; position: absolute; left: -27px; top: 6px; width: 10px; height: 10px;
+    border-radius: 50%; background: {p['gradient_tab']};
+}}
+.item .t {{ font-weight: 700; font-size: 1rem; color: {p['text_primary']}; }}
+.item .s {{ color: {p['text_secondary']}; font-size: 0.9rem; margin-top: 2px; }}
+.item .d {{ color: {p['text_muted']}; font-size: 0.9rem; margin-top: 6px; }}
 
 .chip {{
-    display: inline-block; padding: 5px 12px; margin: 3px;
-    border-radius: 100px;
-    background: {p['chip_bg']}; color: {p['chip_text']};
-    font-size: 12px; font-weight: 500;
+    display: inline-block; padding: 6px 14px; margin: 3px;
+    border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+    border: 1px solid {p['border']}; color: {p['text_primary']};
 }}
 .link-row {{
     display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 14px; margin-bottom: 8px;
+    padding: 14px 18px; margin-bottom: 10px;
     border-radius: 10px;
-    background: {p['surface_hover']};
+    background: {p['btn_sec_bg']};
     border: 1px solid {p['border']};
-    color: {p['text_primary']} !important;
+    color: {p['text_muted']} !important;
     text-decoration: none !important;
-    font-size: 13px;
+    font-size: 0.92rem;
+    transition: all 0.2s;
 }}
-.link-row:hover {{ background: {p['surface']}; }}
+.link-row:hover {{ background: {p['surface_hover']}; }}
 .project-main {{
-    display: block; padding: 14px; border-radius: 10px;
-    background: {p['gradient_tab']};
-    color: #ffffff !important;
-    text-decoration: none !important;
-    font-weight: 600; text-align: center; font-size: 14px;
-    box-shadow: 0 4px 15px {p['link']}40;
+    display: inline-block; color: {p['link']} !important;
+    text-decoration: none !important; font-weight: 600; padding: 8px 0;
+    border-bottom: 1px dashed {p['link']}; transition: all 0.2s; font-size: 1rem;
 }}
-.project-main:hover {{ transform: scale(1.02); }}
-.empty {{ font-size: 13px; color: {p['text_faint']}; font-style: italic; padding: 8px 0; }}
+.project-main:hover {{ color: {p['link_hover']} !important; border-bottom-color: {p['link_hover']}; }}
+.empty {{ font-size: 0.9rem; color: {p['text_secondary']}; font-style: italic; padding: 8px 0; }}
 
 /* Tabs */
 div[data-testid="stTabs"] button {{
     border-radius: 8px !important;
     font-weight: 600 !important;
+    font-size: 0.95rem !important;
     color: {p['text_secondary']} !important;
+    background: transparent !important;
 }}
 div[data-testid="stTabs"] button[aria-selected="true"] {{
     background: {p['gradient_tab']} !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 15px {p['link']}40 !important;
+    box-shadow: 0 4px 15px rgba(102,126,234,0.3) !important;
     border: none !important;
+}}
+div[data-testid="stTabs"] {{
+    background: {p['surface']} !important;
+    border-radius: 14px !important;
+    border: 1px solid {p['border']} !important;
+    backdrop-filter: blur(12px);
+    padding: 6px !important;
+    box-shadow: {p['shadow_card']};
+    width: fit-content !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    margin-bottom: 32px !important;
 }}
 
 /* Form */
 div[data-testid="stForm"] {{
     background: {p['surface']} !important;
     border: 1px solid {p['border']} !important;
-    border-radius: 16px !important;
-    padding: 1.2rem !important;
-    backdrop-filter: blur(14px);
+    border-radius: 20px !important;
+    padding: 24px 28px !important;
+    backdrop-filter: blur(12px);
+    box-shadow: {p['shadow_glow']};
     position: relative;
     z-index: 2;
 }}
 
 /* Inputs */
 .stTextInput input, .stTextArea textarea, .stNumberInput input {{
-    background: {p['surface_hover']} !important;
+    background: {p['input_bg']} !important;
     color: {p['text_primary']} !important;
-    border: 1px solid {p['border']} !important;
+    border: 1px solid {p['input_border']} !important;
 }}
 div[data-baseweb="select"] > div {{
-    background: {p['surface_hover']} !important;
+    background: {p['input_bg']} !important;
     color: {p['text_primary']} !important;
-    border-color: {p['border']} !important;
+    border-color: {p['input_border']} !important;
+}}
+
+/* Buttons */
+.stButton > button {{
+    background: {p['gradient_tab']} !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 15px rgba(102,126,234,0.4) !important;
+    transition: all 0.2s !important;
+}}
+.stButton > button:hover {{
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(102,126,234,0.6) !important;
+}}
+.stButton > button:active {{
+    transform: scale(0.97) !important;
 }}
 
 /* Wave */
@@ -432,24 +448,16 @@ div[data-baseweb="select"] > div {{
     bottom: 0;
     left: 0;
     width: 100vw;
-    height: 240px;
+    height: 40vh;
+    min-height: 250px;
     z-index: 1;
     pointer-events: none;
-}}
-
-/* Style the toggle card container */
-div[data-testid="stVerticalBlockBorderWrapper"] {{
-    background: {p['surface']} !important;
-    backdrop-filter: blur(14px);
-    border-radius: 10px;
-    box-shadow: {p['shadow_card']};
-    padding: 4px 16px !important;
 }}
 </style>
 """
 
-def build_wave(is_dark: bool) -> str:
-    p = DARK if is_dark else LIGHT
+def build_wave() -> str:
+    p = DARK
     return f"""
 <svg class="ecv-wave-bg" viewBox="0 0 1440 240" preserveAspectRatio="none"
      xmlns="http://www.w3.org/2000/svg">
@@ -484,22 +492,16 @@ def render_topbar():
     is_admin = st.session_state.logged_in_as is not None
 
     if is_admin:
-        c1, c2, c3 = st.columns([6, 2, 1])
+        c1, c2 = st.columns([8, 2])
     else:
-        c1, c2, c3 = st.columns([7, 2, 1])
+        c1 = st.columns([1])[0]
 
     with c1:
         title = "E-<span>CV</span> · Admin" if is_admin else "E-<span>CV</span>"
         st.markdown(f'<div class="logo">{title}</div>', unsafe_allow_html=True)
 
-    with c2:
-        # Wrap in a native container to get a card background
-        with st.container(border=True):
-            label = "☀️ Mode Terang" if st.session_state.dark_mode else "🌙 Mode Gelap"
-            st.toggle(label, key="dark_mode")
-
     if is_admin:
-        with c3:
+        with c2:
             if st.button("🚪 Keluar", type="primary", use_container_width=True):
                 st.session_state.logged_in_as = None
                 st.session_state.is_master = False
@@ -527,6 +529,7 @@ def render_public_view(users: list):
                     <div class="profile-card">
                         {avatar_html}
                         <div class="p-name">{esc(u['name'])}</div>
+                        <div class="p-role">Mahasiswa</div>
                         <div class="p-nim">NIM {esc(u['nim'])}</div>
                         <div class="p-bio">{esc(u['bio'])}</div>
                         <div class="p-contact">📧 {esc(u['email'])}</div>
@@ -556,7 +559,7 @@ def render_public_view(users: list):
                     f'<span class="chip">{esc(s)}</span>'
                     for s in (u.get("skills") or [])
                 ) or '<div class="empty">Belum ada keahlian.</div>'
-                st.markdown(f'<div class="card"><h3>Keahlian</h3>{skill_html}</div>',
+                st.markdown(f'<div class="card"><h3>Keahlian</h3><div class="abilities">{skill_html}</div></div>',
                             unsafe_allow_html=True)
 
                 mp = u.get("mainProject") or {}
@@ -568,8 +571,8 @@ def render_public_view(users: list):
                 )
 
                 proj_html = "".join(
-                    f'<a class="link-row" href="{esc(p.get("url", "#"))}" target="_blank" rel="noopener">'
-                    f'<span>🔗 {esc(p.get("name", ""))}</span><span>↗</span></a>'
+                    f'<div class="link-row"><span>▹ {esc(p.get("name", ""))}</span>'
+                    f'<a href="{esc(p.get("url", "#"))}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">↗</a></div>'
                     for p in (u.get("otherProjects") or [])
                 ) or '<div class="empty">Belum ada proyek lain.</div>'
                 st.markdown(f'<div class="card"><h3>Proyek Lainnya</h3>{proj_html}</div>',
@@ -677,8 +680,10 @@ def render_edit_data_tab(u: dict, data: dict):
             initials = esc((u["name"] or "?")[0])
             st.markdown(
                 f'<div style="width:120px;height:120px;border-radius:50%;'
-                f'background:#e2e8f0;color:#667eea;display:flex;align-items:center;'
-                f'justify-content:center;font-size:44px;font-weight:700;">{initials}</div>',
+                f'background:rgba(30, 41, 59, 0.7);color:#f8fafc;display:flex;align-items:center;'
+                f'justify-content:center;font-size:44px;font-weight:700;'
+                f'border:4px solid rgba(30, 41, 59, 0.7);box-shadow:0 4px 12px rgba(0,0,0,0.1);">'
+                f'{initials}</div>',
                 unsafe_allow_html=True,
             )
     with av_col2:
@@ -884,13 +889,12 @@ def render_reset_password_tab(u: dict, data: dict):
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
-# Render topbar with toggle
+# Render topbar
 render_topbar()
 
-# Apply CSS and wave based on dark mode state
-is_dark = st.session_state.dark_mode
-st.markdown(build_css(is_dark), unsafe_allow_html=True)
-st.markdown(build_wave(is_dark), unsafe_allow_html=True)
+# Apply exact dark colors and wave
+st.markdown(build_css(), unsafe_allow_html=True)
+st.markdown(build_wave(), unsafe_allow_html=True)
 
 # Route views
 if st.session_state.logged_in_as:
