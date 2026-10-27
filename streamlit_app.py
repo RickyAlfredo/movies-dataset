@@ -1,5 +1,5 @@
 """
-E-CV — Step 5: Removed top bar, fixed dark mode, added keystroke trigger.
+E-CV — Step 6: Exact repo colors, visible dark toggle, and keyboard shortcuts.
 """
 
 import hashlib
@@ -11,9 +11,10 @@ import time
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ════════════════════════════════════════════════════════════════════
-# 1. PAGE CONFIG (removes top-right menu)
+# 1. PAGE CONFIG
 # ════════════════════════════════════════════════════════════════════
 st.set_page_config(
     page_title="E-CV",
@@ -24,22 +25,49 @@ st.set_page_config(
 )
 
 # ════════════════════════════════════════════════════════════════════
-# 2. KEYSTROKE TRIGGER (capstone12 / kapstone12 -> ?admin=1)
+# 2. KEYBOARD SHORTCUTS (Invisible iframe trick)
 # ════════════════════════════════════════════════════════════════════
-st.markdown("""
+components.html("""
 <script>
-let buffer = "";
-document.addEventListener("keydown", function(e) {
-    if (e.key.length === 1) {
-        buffer = (buffer + e.key.toLowerCase()).slice(-20);
-        if (buffer.includes("capstone12") || buffer.includes("kapstone12")) {
-            buffer = "";
-            window.location.href = window.location.pathname + "?admin=1";
-        }
+function attachKeyboardListeners() {
+    try {
+        const pDoc = window.parent.document;
+        const pWin = window.parent;
+        
+        // Hide Streamlit UI by default
+        pDoc.body.classList.add('hide-admin-ui');
+
+        let buffer = "";
+        pDoc.addEventListener("keydown", function(e) {
+            if (e.key.length === 1) {
+                buffer = (buffer + e.key.toLowerCase()).slice(-20);
+                
+                // 1. Admin trigger (capstone12 or kapstone12)
+                if (buffer.includes("capstone12") || buffer.includes("kapstone12")) {
+                    buffer = "";
+                    const url = new URL(pWin.location.href);
+                    url.searchParams.set("admin", "1");
+                    pWin.location.href = url.href;
+                }
+                
+                // 2. Toggle Streamlit UI (admin12)
+                if (buffer.includes("admin12")) {
+                    buffer = "";
+                    if (pDoc.body.classList.contains('hide-admin-ui')) {
+                        pDoc.body.classList.remove('hide-admin-ui');
+                    } else {
+                        pDoc.body.classList.add('hide-admin-ui');
+                    }
+                }
+            }
+        });
+    } catch (e) {
+        console.log("Cross-origin error:", e);
     }
-});
+}
+attachKeyboardListeners();
 </script>
-""", unsafe_allow_html=True)
+""", height=0, width=0)
 
 # ════════════════════════════════════════════════════════════════════
 # 3. CLOUDINARY
@@ -239,61 +267,65 @@ for key, default in [
         st.session_state[key] = default
 
 # ════════════════════════════════════════════════════════════════════
-# 7. THEME PALETTES
+# 7. THEME PALETTES (Exact copy from repo)
 # ════════════════════════════════════════════════════════════════════
 LIGHT = {
-    "bg":            "linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%)",
-    "surface":       "rgba(255, 255, 255, 0.7)",
-    "surface_hover": "rgba(255, 255, 255, 0.9)",
-    "border":        "rgba(200, 214, 229, 0.5)",
-    "text_primary":  "#1e293b",
-    "text_secondary":"#64748b",
-    "text_muted":    "#475569",
-    "text_faint":    "#94a3b8",
-    "shadow_glow":   "0 8px 32px rgba(30, 41, 59, 0.08)",
-    "shadow_card":   "0 4px 16px rgba(30, 41, 59, 0.04)",
-    "link":          "#4f46e5",
+    "bg":            "#f4f7f6",
+    "surface":       "rgba(255, 255, 255, 0.8)",
+    "surface_hover": "rgba(255, 255, 255, 0.95)",
+    "border":        "rgba(0, 0, 0, 0.1)",
+    "text_primary":  "#333333",
+    "text_secondary":"#666666",
+    "text_muted":    "#555555",
+    "text_faint":    "#999999",
+    "shadow_glow":   "0 8px 32px rgba(0, 0, 0, 0.05)",
+    "shadow_card":   "0 4px 16px rgba(0, 0, 0, 0.03)",
+    "link":          "#667eea",
     "gradient_tab":  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "chip_bg":       "rgba(102, 126, 234, 0.12)",
-    "chip_text":     "#4f46e5",
-    "avatar_bg":     "#dbeafe",
-    "avatar_text":   "#2563eb",
-    "wave_1":        "rgba(120, 160, 255, 0.35)",
-    "wave_2":        "rgba(180, 120, 255, 0.30)",
-    "wave_3":        "rgba(90, 200, 220, 0.25)",
+    "chip_bg":       "rgba(102, 126, 234, 0.1)",
+    "chip_text":     "#667eea",
+    "avatar_bg":     "#e2e8f0",
+    "avatar_text":   "#667eea",
+    "wave_1":        "rgba(102, 126, 234, 0.1)",
+    "wave_2":        "rgba(118, 75, 162, 0.08)",
+    "wave_3":        "rgba(102, 126, 234, 0.05)",
 }
 
 DARK = {
-    "bg":            "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-    "surface":       "rgba(30, 41, 59, 0.6)",
-    "surface_hover": "rgba(51, 65, 85, 0.85)",
-    "border":        "rgba(100, 116, 139, 0.3)",
-    "text_primary":  "#f1f5f9",
-    "text_secondary":"#94a3b8",
-    "text_muted":    "#cbd5e1",
-    "text_faint":    "#64748b",
-    "shadow_glow":   "0 8px 32px rgba(0, 0, 0, 0.45)",
-    "shadow_card":   "0 4px 16px rgba(0, 0, 0, 0.3)",
-    "link":          "#818cf8",
-    "gradient_tab":  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    "chip_bg":       "rgba(139, 92, 246, 0.18)",
-    "chip_text":     "#a78bfa",
-    "avatar_bg":     "#312e81",
-    "avatar_text":   "#a5b4fc",
-    "wave_1":        "rgba(60, 90, 180, 0.30)",
-    "wave_2":        "rgba(120, 70, 200, 0.25)",
-    "wave_3":        "rgba(50, 130, 160, 0.22)",
+    "bg":            "#1a1a2e",
+    "surface":       "rgba(30, 30, 50, 0.7)",
+    "surface_hover": "rgba(40, 40, 65, 0.9)",
+    "border":        "rgba(255, 255, 255, 0.1)",
+    "text_primary":  "#e0e0e0",
+    "text_secondary":"#a0a0b0",
+    "text_muted":    "#c0c0d0",
+    "text_faint":    "#808090",
+    "shadow_glow":   "0 8px 32px rgba(0, 0, 0, 0.4)",
+    "shadow_card":   "0 4px 16px rgba(0, 0, 0, 0.2)",
+    "link":          "#8a9cff",
+    "gradient_tab":  "linear-gradient(135deg, #8a9cff 0%, #a78bfa 100%)",
+    "chip_bg":       "rgba(138, 156, 255, 0.15)",
+    "chip_text":     "#8a9cff",
+    "avatar_bg":     "#2a2a4a",
+    "avatar_text":   "#8a9cff",
+    "wave_1":        "rgba(138, 156, 255, 0.05)",
+    "wave_2":        "rgba(167, 139, 250, 0.05)",
+    "wave_3":        "rgba(138, 156, 255, 0.03)",
 }
 
 def build_css(is_dark: bool) -> str:
     p = DARK if is_dark else LIGHT
     return f"""
 <style>
-/* Hide Streamlit header, menu, footer */
-#MainMenu {{visibility: hidden;}}
-header {{visibility: hidden;}}
-footer {{visibility: hidden;}}
-[data-testid="stHeader"] {{display: none !important;}}
+/* Hide Streamlit UI by default (toggled by 'admin12' keystroke) */
+body.hide-admin-ui header,
+body.hide-admin-ui [data-testid="stHeader"],
+body.hide-admin-ui #MainMenu,
+body.hide-admin-ui footer,
+body.hide-admin-ui [data-testid="stStatusWidget"] {{
+    display: none !important;
+    visibility: hidden !important;
+}}
 
 .stApp {{
     background: {p['bg']} !important;
@@ -319,7 +351,7 @@ html, body, [class*="css"] {{
     font-size: 26px; font-weight: 800; margin-bottom: 4px;
     color: {p['text_primary']};
 }}
-.logo span {{ color: #3b82f6; }}
+.logo span {{ color: {p['link']}; }}
 
 .profile-card {{
     background: {p['surface']};
@@ -364,7 +396,7 @@ html, body, [class*="css"] {{
     margin: 0 0 14px; font-size: 12px; text-transform: uppercase;
     letter-spacing: 1.2px; color: {p['text_secondary']}; font-weight: 700;
 }}
-.item {{ border-left: 3px solid #667eea; padding: 2px 0 2px 14px; margin-bottom: 14px; }}
+.item {{ border-left: 3px solid {p['link']}; padding: 2px 0 2px 14px; margin-bottom: 14px; }}
 .item:last-child {{ margin-bottom: 0; }}
 .item .t {{ font-weight: 600; font-size: 14px; color: {p['text_primary']}; }}
 .item .s {{ font-size: 12px; color: {p['text_secondary']}; margin-top: 3px; }}
@@ -393,7 +425,7 @@ html, body, [class*="css"] {{
     color: #ffffff !important;
     text-decoration: none !important;
     font-weight: 600; text-align: center; font-size: 14px;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 15px {p['link']}40;
 }}
 .project-main:hover {{ transform: scale(1.02); }}
 .empty {{ font-size: 13px; color: {p['text_faint']}; font-style: italic; padding: 8px 0; }}
@@ -407,7 +439,7 @@ div[data-testid="stTabs"] button {{
 div[data-testid="stTabs"] button[aria-selected="true"] {{
     background: {p['gradient_tab']} !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
+    box-shadow: 0 4px 15px {p['link']}40 !important;
     border: none !important;
 }}
 
@@ -477,26 +509,26 @@ def build_wave(is_dark: bool) -> str:
 """
 
 # ════════════════════════════════════════════════════════════════════
-# 8. TOPBAR (Cleaned up + Sidebar for Dark Mode)
+# 8. TOPBAR (Visible Dark Mode Toggle)
 # ════════════════════════════════════════════════════════════════════
 def render_topbar():
     is_admin = st.session_state.logged_in_as is not None
 
-    # Dark Mode Toggle in Sidebar (very visible, won't break layout)
-    with st.sidebar:
-        st.toggle("🌙 Mode Gelap", key="dark_mode")
-
     if is_admin:
-        c1, c2 = st.columns([8, 2])
+        c1, c2, c3 = st.columns([6, 1, 1])
     else:
-        c1, c2 = st.columns([9, 1])
+        c1, c2, c3 = st.columns([8, 1, 1])
 
     with c1:
         title = "E-<span>CV</span> · Admin" if is_admin else "E-<span>CV</span>"
         st.markdown(f'<div class="logo">{title}</div>', unsafe_allow_html=True)
 
+    with c2:
+        # Force the toggle to be visible
+        st.toggle("🌙 Gelap", key="dark_mode")
+
     if is_admin:
-        with c2:
+        with c3:
             if st.button("🚪 Keluar", type="primary", use_container_width=True):
                 st.session_state.logged_in_as = None
                 st.session_state.is_master = False
@@ -505,7 +537,7 @@ def render_topbar():
                 st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
-# 9. PUBLIC VIEW BODY
+# 9. PUBLIC VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_public_view(users: list):
     tabs = st.tabs([u["name"] for u in users])
@@ -582,7 +614,7 @@ def render_public_view(users: list):
                             unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════
-# 10. LOGIN VIEW BODY
+# 10. LOGIN VIEW
 # ════════════════════════════════════════════════════════════════════
 def render_login_page(data: dict):
     st.subheader("🔐 Login Admin")
@@ -621,7 +653,7 @@ def render_login_page(data: dict):
         st.rerun()
 
 # ════════════════════════════════════════════════════════════════════
-# 11. ADMIN PANEL BODY
+# 11. ADMIN PANEL
 # ════════════════════════════════════════════════════════════════════
 def render_admin_panel(data: dict):
     is_master = st.session_state.is_master
@@ -674,7 +706,7 @@ def render_edit_data_tab(u: dict, data: dict):
             initials = esc((u["name"] or "?")[0])
             st.markdown(
                 f'<div style="width:120px;height:120px;border-radius:50%;'
-                f'background:#dbeafe;color:#2563eb;display:flex;align-items:center;'
+                f'background:#e2e8f0;color:#667eea;display:flex;align-items:center;'
                 f'justify-content:center;font-size:44px;font-weight:700;">{initials}</div>',
                 unsafe_allow_html=True,
             )
@@ -881,10 +913,10 @@ def render_reset_password_tab(u: dict, data: dict):
 # ════════════════════════════════════════════════════════════════════
 data = load_and_migrate()
 
-# Render top bar (handles sidebar dark mode toggle + logo + logout)
+# Render topbar (this now holds the dark mode toggle directly on the page)
 render_topbar()
 
-# Apply CSS and Wave
+# Apply exact colors and wave
 is_dark = st.session_state.dark_mode
 st.markdown(build_css(is_dark), unsafe_allow_html=True)
 st.markdown(build_wave(is_dark), unsafe_allow_html=True)
