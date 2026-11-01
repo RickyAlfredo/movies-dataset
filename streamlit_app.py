@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 # ════════════════════════════════════════════════════════════════════
-# 2. ANTI-INSPECT & UI TWEAKS (FIXED SANDBOX BYPASS & ADMIN EXEMPTION)
+# 2. ANTI-INSPECT & UI TWEAKS
 # ════════════════════════════════════════════════════════════════════
 components.html("""
 <script>
@@ -30,7 +30,7 @@ components.html("""
         return;
     }
 
-    // 2. Anti-Inspect (Rickroll) using parent.parent to escape sandbox
+    // 2. Anti-Inspect (Rickroll)
     setInterval(function() {
         const widthThreshold = window.parent.parent.outerWidth - window.parent.parent.innerWidth > 160;
         const heightThreshold = window.parent.parent.outerHeight - window.parent.parent.innerHeight > 160;
@@ -303,6 +303,12 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link { display: inline-flex; align-items: center; gap: 8px; color: #a78bfa !important; text-decoration: none !important; font-weight: 500; font-size: 0.9rem; margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; background: rgba(139, 92, 246, 0.1); transition: background 0.2s; }
 .btn-link:hover { background: rgba(139, 92, 246, 0.2); }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
+
+/* FIX: Hover effect via CSS instead of inline JS */
+.profile-card-link { text-decoration: none; color: inherit; display: block; }
+.profile-card-link .glass-card { transition: transform 0.2s ease-in-out; }
+.profile-card-link:hover .glass-card { transform: scale(1.02); }
+
 div[data-testid="stTabs"] { width: 100%; }
 div[data-testid="stTabs"] > div > div:first-child { display: flex; justify-content: center; width: 100%; }
 div[data-baseweb="tab-list"] { background: rgba(30, 41, 59, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 12px !important; padding: 6px !important; backdrop-filter: blur(12px) !important; display: flex !important; gap: 8px !important; border-bottom: none !important; width: fit-content !important; margin: 0 auto 24px auto !important; }
@@ -344,9 +350,11 @@ def render_public_grid(users: list, team_projects: dict):
             if u.get("email"): contacts.append(f'<div class="contact-item"><div class="contact-icon">✉</div> {esc(u["email"])}</div>')
             if u.get("phone"): contacts.append(f'<div class="contact-item"><div class="contact-icon">📞</div> {esc(u["phone"])}</div>')
             contact_html = "".join(contacts)
+            
+            # FIX: Removed inline onmouseover/onmouseout and applied .profile-card-link class
             st.markdown(f"""
-                <a href="?profile={u['id']}" target="_self" style="text-decoration: none; color: inherit; display: block;">
-                    <div class="glass-card" style="text-align: center; height: 100%; cursor: pointer;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                <a href="?profile={u['id']}" target="_self" class="profile-card-link">
+                    <div class="glass-card" style="text-align: center; height: 100%; cursor: pointer;">
                         {avatar_html}
                         <div class="profile-name">{esc(u['name'])}</div>
                         <div class="profile-role">{esc(u.get('role', 'Siswa'))}</div>
