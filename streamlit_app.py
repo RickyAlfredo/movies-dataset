@@ -65,7 +65,7 @@ components.html("""
 """, height=0, width=0)
 
 # ════════════════════════════════════════════════════════════════════
-# 3. CLOUDINARY & SUPABASE SETUP (With explicit debug errors)
+# 3. CLOUDINARY & SUPABASE SETUP
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
 CLOUD_ERR = ""
@@ -94,10 +94,11 @@ try:
         raise Exception("Missing [supabase] section in secrets.")
         
     supabase_url = st.secrets["supabase"]["url"]
-    supabase_key = st.secrets["supabase"]["key"]
+    # Use the service_role key to bypass RLS
+    supabase_key = st.secrets["supabase"]["service_key"] 
     supabase: Client = create_client(supabase_url, supabase_key)
     SUPABASE_READY = True
-    print("🗄️ [Supabase] Client Initialized Successfully.", flush=True)
+    print("🗄️ [Supabase] Client Initialized Successfully (using service_role key).", flush=True)
 except Exception as e:
     SUPA_ERR = str(e)
     print(f"⚠️ [Supabase] Setup Failed: {e}", flush=True)
