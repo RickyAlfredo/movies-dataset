@@ -86,8 +86,9 @@ try:
         secure=True,
     )
     CLOUDINARY_READY = True
-except Exception:
-    CLOUDINARY_READY = False
+    print("☁️ [Cloudinary] Config Loaded Successfully.")
+except Exception as e:
+    print(f"⚠️ [Cloudinary] Setup Failed: {e}")
 
 SUPABASE_READY = False
 try:
@@ -95,16 +96,19 @@ try:
     supabase_key = st.secrets["supabase"]["key"]
     supabase: Client = create_client(supabase_url, supabase_key)
     SUPABASE_READY = True
-except Exception:
-    SUPABASE_READY = False
+    print("🗄️ [Supabase] Client Initialized Successfully.")
+except Exception as e:
+    print(f"⚠️ [Supabase] Setup Failed: {e}")
 
 MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
 def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: str):
-    print(f"\n☁️ [Cloudinary] Uploading {filename}...")
+    size_kb = len(file_bytes) / 1024
+    print(f"\n☁️ [Cloudinary] Attempting to upload: '{filename}' ({size_kb:.1f} KB) | Type: {resource_type}")
+    
     if not CLOUDINARY_READY:
-        print("❌ [Cloudinary] Not configured.")
+        print("❌ [Cloudinary] Upload aborted: Not configured.")
         st.error("Cloudinary tidak dikonfigurasi. File tidak dapat disimpan.")
         return None
 
@@ -114,17 +118,25 @@ def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: 
         result = cloudinary.uploader.upload(
             BytesIO(file_bytes), resource_type=resource_type, folder="ecv", public_id=unique_id
         )
-        print(f"✅ [Cloudinary] Upload successful: {result['secure_url']}")
+        print(f"✅ [Cloudinary] Upload Success!")
+        print(f"   -> URL: {result['secure_url']}")
+        print(f"   -> Public ID: {result['public_id']}")
         return {"url": result["secure_url"], "public_id": result["public_id"]}
     except Exception as e:
-        print(f"❌ [Cloudinary] Upload error: {e}")
+        print(f"❌ [Cloudinary] Upload Error: {e}")
         st.error(f"Gagal upload ke Cloudinary: {e}")
         return None
 
 def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
-    if not CLOUDINARY_READY or not public_id: return
-    try: cloudinary.uploader.destroy(public_id, resource_type=resource_type)
-    except Exception: pass
+    print(f"\n🗑️ [Cloudinary] Attempting to delete Public ID: '{public_id}'")
+    if not CLOUDINARY_READY or not public_id: 
+        print("❌ [Cloudinary] Delete aborted: Not configured or missing ID.")
+        return
+    try: 
+        cloudinary.uploader.destroy(public_id, resource_type=resource_type)
+        print(f"✅ [Cloudinary] Delete Success: '{public_id}'")
+    except Exception as e: 
+        print(f"❌ [Cloudinary] Delete Error: {e}")
 
 def validate_upload(uploaded) -> tuple[bool, str]:
     if uploaded is None: return False, "Tidak ada berkas."
@@ -142,9 +154,9 @@ def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(
 def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
 
 def fetch_data_from_db() -> dict:
-    print("\n📥 [DB] Requesting data from Supabase...")
+    print("\n📥 [Supabase] Fetching data from table 'ecv_data' (ID: 1)...")
     if not SUPABASE_READY:
-        print("❌ [DB] Supabase not ready (missing secrets).")
+        print("❌ [Supabase] Fetch aborted: Client not ready.")
         st.error("⚠️ Supabase belum dikonfigurasi. Data tidak akan tersimpan permanen.")
         return SEED
 
@@ -152,12 +164,12 @@ def fetch_data_from_db() -> dict:
         response = supabase.table("ecv_data").select("content").eq("id", 1).execute()
         if response.data and response.data[0].get("content"):
             data = response.data[0]["content"]
-            print("✅ [DB] Data loaded successfully from Supabase.")
+            print(f"✅ [Supabase] Fetch Success! Found {len(data.get('users', []))} users.")
         else:
-            print("⚠️ [DB] No data found in Supabase. Initializing with SEED.")
+            print("⚠️ [Supabase] Fetch returned empty. Initializing with SEED data.")
             data = SEED
     except Exception as e:
-        print(f"❌ [DB] Fetch error: {e}")
+        print(f"❌ [Supabase] Fetch Error: {e}")
         st.error(f"Gagal memuat data dari Supabase: {e}")
         data = SEED
 
@@ -181,27 +193,28 @@ def fetch_data_from_db() -> dict:
         if "otherProjects" in u: del u["otherProjects"]; changed = True
 
     if changed:
-        print("🔄 [DB] Schema migrated. Pushing changes to Supabase...")
+        print("🔄 [Supabase] Schema migration required. Pushing changes...")
         try:
             supabase.table("ecv_data").upsert({"id": 1, "content": data}).execute()
-            print("✅ [DB] Schema migration saved.")
+            print("✅ [Supabase] Schema migration saved successfully.")
         except Exception as e:
-            print(f"❌ [DB] Migration save error: {e}")
+            print(f"❌ [Supabase] Migration save error: {e}")
             
     return data
 
 def save_data(data: dict) -> None:
-    print("\n📤 [DB] Sending updates to Supabase...")
+    print("\n📤 [Supabase] Upserting data to table 'ecv_data' (ID: 1)...")
     st.session_state.app_data = data
     
     if not SUPABASE_READY:
-        print("❌ [DB] Save failed: Supabase not ready.")
+        print("❌ [Supabase] Save aborted: Client not ready.")
         return
     try:
+        payload_size = len(json.dumps(data))
         supabase.table("ecv_data").upsert({"id": 1, "content": data}).execute()
-        print("✅ [DB] Data saved successfully!")
+        print(f"✅ [Supabase] Save Complete! Payload Size: {payload_size} bytes.")
     except Exception as e:
-        print(f"❌ [DB] Error saving data: {e}")
+        print(f"❌ [Supabase] Save Error: {e}")
         st.error(f"Gagal menyimpan data ke Supabase: {e}")
 
 # ════════════════════════════════════════════════════════════════════
@@ -351,7 +364,6 @@ def render_public_grid(users: list, team_projects: dict):
             if u.get("phone"): contacts.append(f'<div class="contact-item"><div class="contact-icon">📞</div> {esc(u["phone"])}</div>')
             contact_html = "".join(contacts)
             
-            # FIX: Removed inline onmouseover/onmouseout and applied .profile-card-link class
             st.markdown(f"""
                 <a href="?profile={u['id']}" target="_self" class="profile-card-link">
                     <div class="glass-card" style="text-align: center; height: 100%; cursor: pointer;">
