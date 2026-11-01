@@ -21,25 +21,33 @@ st.set_page_config(
 )
 
 # ════════════════════════════════════════════════════════════════════
-# 2. ANTI-INSPECT & UI TWEAKS
+# 2. ANTI-INSPECT & UI TWEAKS (FIXED SANDBOX BYPASS & ADMIN EXEMPTION)
 # ════════════════════════════════════════════════════════════════════
 components.html("""
 <script>
+    // 1. Skip everything if in Admin Mode
+    if (window.parent.location.search.includes('admin=1')) {
+        return;
+    }
+
+    // 2. Anti-Inspect (Rickroll) using parent.parent to escape sandbox
     setInterval(function() {
-        const widthThreshold = window.parent.outerWidth - window.parent.innerWidth > 160;
-        const heightThreshold = window.parent.outerHeight - window.parent.innerHeight > 160;
+        const widthThreshold = window.parent.parent.outerWidth - window.parent.parent.innerWidth > 160;
+        const heightThreshold = window.parent.parent.outerHeight - window.parent.parent.innerHeight > 160;
         if (widthThreshold || heightThreshold) {
-            window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
+            window.parent.parent.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
         }
     }, 1000);
 
     document.addEventListener('contextmenu', event => event.preventDefault());
     document.addEventListener('keydown', function(e) {
         if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && e.key === 'U')) {
-            e.preventDefault(); window.top.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
+            e.preventDefault(); 
+            window.parent.parent.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
         }
     });
 
+    // 3. QOL: Green Button & Tab Persistence
     const doc = window.parent.document;
     function applyUI() {
         doc.querySelectorAll('button').forEach(btn => {
@@ -94,7 +102,6 @@ MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
 def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: str):
-    """Uploads directly to Cloudinary and returns the secure URL."""
     print(f"\n☁️ [Cloudinary] Uploading {filename}...")
     if not CLOUDINARY_READY:
         print("❌ [Cloudinary] Not configured.")
@@ -135,7 +142,6 @@ def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(
 def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
 
 def fetch_data_from_db() -> dict:
-    """Pulls the JSON from Supabase and logs to console."""
     print("\n📥 [DB] Requesting data from Supabase...")
     if not SUPABASE_READY:
         print("❌ [DB] Supabase not ready (missing secrets).")
@@ -185,7 +191,6 @@ def fetch_data_from_db() -> dict:
     return data
 
 def save_data(data: dict) -> None:
-    """Saves the JSON to Supabase and updates local cache."""
     print("\n📤 [DB] Sending updates to Supabase...")
     st.session_state.app_data = data
     
@@ -250,7 +255,6 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# Load from DB ONLY ONCE per session to avoid rate limits
 if "app_data" not in st.session_state:
     st.session_state.app_data = fetch_data_from_db()
 
