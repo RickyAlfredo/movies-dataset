@@ -25,12 +25,7 @@ st.set_page_config(
 # ════════════════════════════════════════════════════════════════════
 components.html("""
 <script>
-    // 1. Skip everything if in Admin Mode
-    if (window.parent.location.search.includes('admin=1')) {
-        return;
-    }
-
-    // 2. Anti-Inspect (Rickroll)
+    if (window.parent.location.search.includes('admin=1')) return;
     setInterval(function() {
         const widthThreshold = window.parent.parent.outerWidth - window.parent.parent.innerWidth > 160;
         const heightThreshold = window.parent.parent.outerHeight - window.parent.parent.innerHeight > 160;
@@ -38,7 +33,6 @@ components.html("""
             window.parent.parent.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
         }
     }, 1000);
-
     document.addEventListener('contextmenu', event => event.preventDefault());
     document.addEventListener('keydown', function(e) {
         if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && e.key === 'U')) {
@@ -46,8 +40,6 @@ components.html("""
             window.parent.parent.location.href = "https://youtu.be/lpiB2wMc49g?si=sPGfx6kDv3SWNbE1";
         }
     });
-
-    // 3. QOL: Green Button & Tab Persistence
     const doc = window.parent.document;
     function applyUI() {
         doc.querySelectorAll('button').forEach(btn => {
@@ -73,12 +65,16 @@ components.html("""
 """, height=0, width=0)
 
 # ════════════════════════════════════════════════════════════════════
-# 3. CLOUDINARY & SUPABASE SETUP
+# 3. CLOUDINARY & SUPABASE SETUP (With explicit debug errors)
 # ════════════════════════════════════════════════════════════════════
 CLOUDINARY_READY = False
+CLOUD_ERR = ""
 try:
     import cloudinary
     import cloudinary.uploader
+    if "cloudinary" not in st.secrets:
+        raise Exception("Missing [cloudinary] section in secrets.")
+        
     cloudinary.config(
         cloud_name=st.secrets["cloudinary"]["cloud_name"],
         api_key=st.secrets["cloudinary"]["api_key"],
@@ -86,30 +82,42 @@ try:
         secure=True,
     )
     CLOUDINARY_READY = True
-    print("☁️ [Cloudinary] Config Loaded Successfully.")
+    print("☁️ [Cloudinary] Config Loaded Successfully.", flush=True)
 except Exception as e:
-    print(f"⚠️ [Cloudinary] Setup Failed: {e}")
+    CLOUD_ERR = str(e)
+    print(f"⚠️ [Cloudinary] Setup Failed: {e}", flush=True)
 
 SUPABASE_READY = False
+SUPA_ERR = ""
 try:
+    if "supabase" not in st.secrets:
+        raise Exception("Missing [supabase] section in secrets.")
+        
     supabase_url = st.secrets["supabase"]["url"]
     supabase_key = st.secrets["supabase"]["key"]
     supabase: Client = create_client(supabase_url, supabase_key)
     SUPABASE_READY = True
-    print("🗄️ [Supabase] Client Initialized Successfully.")
+    print("🗄️ [Supabase] Client Initialized Successfully.", flush=True)
 except Exception as e:
-    print(f"⚠️ [Supabase] Setup Failed: {e}")
+    SUPA_ERR = str(e)
+    print(f"⚠️ [Supabase] Setup Failed: {e}", flush=True)
+
+# VISUAL WARNING FOR THE USER
+if not SUPABASE_READY or not CLOUDINARY_READY:
+    st.error(f"⚠️ **Connection Issue Detected!**\n\n"
+             f"- **Supabase Connected:** {SUPABASE_READY} ({SUPA_ERR})\n"
+             f"- **Cloudinary Connected:** {CLOUDINARY_READY} ({CLOUD_ERR})\n\n"
+             f"*If this is on Streamlit Cloud, please ensure your Secrets are configured correctly in the dashboard settings.*")
 
 MAX_FILE_BYTES = 5 * 1024 * 1024
 ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
 def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: str):
     size_kb = len(file_bytes) / 1024
-    print(f"\n☁️ [Cloudinary] Attempting to upload: '{filename}' ({size_kb:.1f} KB) | Type: {resource_type}")
+    print(f"\n☁️ [Cloudinary] Attempting to upload: '{filename}' ({size_kb:.1f} KB) | Type: {resource_type}", flush=True)
     
     if not CLOUDINARY_READY:
-        print("❌ [Cloudinary] Upload aborted: Not configured.")
-        st.error("Cloudinary tidak dikonfigurasi. File tidak dapat disimpan.")
+        print("❌ [Cloudinary] Upload aborted: Not configured.", flush=True)
         return None
 
     base = filename.rsplit(".", 1)[0].replace(" ", "_")[:60]
@@ -118,32 +126,26 @@ def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: 
         result = cloudinary.uploader.upload(
             BytesIO(file_bytes), resource_type=resource_type, folder="ecv", public_id=unique_id
         )
-        print(f"✅ [Cloudinary] Upload Success!")
-        print(f"   -> URL: {result['secure_url']}")
-        print(f"   -> Public ID: {result['public_id']}")
+        print(f"✅ [Cloudinary] Upload Success! URL: {result['secure_url']}", flush=True)
         return {"url": result["secure_url"], "public_id": result["public_id"]}
     except Exception as e:
-        print(f"❌ [Cloudinary] Upload Error: {e}")
+        print(f"❌ [Cloudinary] Upload Error: {e}", flush=True)
         st.error(f"Gagal upload ke Cloudinary: {e}")
         return None
 
 def destroy_on_cloudinary(public_id: str, resource_type: str) -> None:
-    print(f"\n🗑️ [Cloudinary] Attempting to delete Public ID: '{public_id}'")
-    if not CLOUDINARY_READY or not public_id: 
-        print("❌ [Cloudinary] Delete aborted: Not configured or missing ID.")
-        return
+    print(f"\n🗑️ [Cloudinary] Attempting to delete Public ID: '{public_id}'", flush=True)
+    if not CLOUDINARY_READY or not public_id: return
     try: 
         cloudinary.uploader.destroy(public_id, resource_type=resource_type)
-        print(f"✅ [Cloudinary] Delete Success: '{public_id}'")
+        print(f"✅ [Cloudinary] Delete Success.", flush=True)
     except Exception as e: 
-        print(f"❌ [Cloudinary] Delete Error: {e}")
+        print(f"❌ [Cloudinary] Delete Error: {e}", flush=True)
 
 def validate_upload(uploaded) -> tuple[bool, str]:
     if uploaded is None: return False, "Tidak ada berkas."
-    if uploaded.size > MAX_FILE_BYTES:
-        return False, f"Ukuran berkas {uploaded.size / (1024 * 1024):.1f} MB melebihi batas 5 MB."
-    if uploaded.type not in ALLOWED_MIMES:
-        return False, "Hanya berkas .pdf, .png, atau .jpeg yang diizinkan."
+    if uploaded.size > MAX_FILE_BYTES: return False, f"Ukuran berkas melebihi 5 MB."
+    if uploaded.type not in ALLOWED_MIMES: return False, "Hanya .pdf, .png, .jpeg yang diizinkan."
     return True, ""
 
 # ════════════════════════════════════════════════════════════════════
@@ -154,22 +156,21 @@ def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(
 def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
 
 def fetch_data_from_db() -> dict:
-    print("\n📥 [Supabase] Fetching data from table 'ecv_data' (ID: 1)...")
+    print("\n📥 [Supabase] Fetching data from table 'ecv_data' (ID: 1)...", flush=True)
     if not SUPABASE_READY:
-        print("❌ [Supabase] Fetch aborted: Client not ready.")
-        st.error("⚠️ Supabase belum dikonfigurasi. Data tidak akan tersimpan permanen.")
+        print("❌ [Supabase] Fetch aborted: Client not ready.", flush=True)
         return SEED
 
     try:
         response = supabase.table("ecv_data").select("content").eq("id", 1).execute()
         if response.data and response.data[0].get("content"):
             data = response.data[0]["content"]
-            print(f"✅ [Supabase] Fetch Success! Found {len(data.get('users', []))} users.")
+            print(f"✅ [Supabase] Fetch Success! Found {len(data.get('users', []))} users.", flush=True)
         else:
-            print("⚠️ [Supabase] Fetch returned empty. Initializing with SEED data.")
+            print("⚠️ [Supabase] Fetch returned empty. Initializing with SEED data.", flush=True)
             data = SEED
     except Exception as e:
-        print(f"❌ [Supabase] Fetch Error: {e}")
+        print(f"❌ [Supabase] Fetch Error: {e}", flush=True)
         st.error(f"Gagal memuat data dari Supabase: {e}")
         data = SEED
 
@@ -185,88 +186,56 @@ def fetch_data_from_db() -> dict:
         if "password" not in u or not is_hash(u["password"]):
             u["password"] = sha256(u.get("password", "password123"))
             changed = True
-        u.setdefault("profilePicture", "")
-        u.setdefault("files", [])
-        u.setdefault("role", "")
-        u.setdefault("location", "")
+        u.setdefault("profilePicture", ""); u.setdefault("files", []); u.setdefault("role", ""); u.setdefault("location", "")
         if "mainProject" in u: del u["mainProject"]; changed = True
         if "otherProjects" in u: del u["otherProjects"]; changed = True
 
     if changed:
-        print("🔄 [Supabase] Schema migration required. Pushing changes...")
+        print("🔄 [Supabase] Schema migration required. Pushing changes...", flush=True)
         try:
             supabase.table("ecv_data").upsert({"id": 1, "content": data}).execute()
-            print("✅ [Supabase] Schema migration saved successfully.")
+            print("✅ [Supabase] Schema migration saved successfully.", flush=True)
         except Exception as e:
-            print(f"❌ [Supabase] Migration save error: {e}")
+            print(f"❌ [Supabase] Migration save error: {e}", flush=True)
             
     return data
 
 def save_data(data: dict) -> None:
-    print("\n📤 [Supabase] Upserting data to table 'ecv_data' (ID: 1)...")
+    print("\n📤 [Supabase] Upserting data to table 'ecv_data' (ID: 1)...", flush=True)
     st.session_state.app_data = data
     
     if not SUPABASE_READY:
-        print("❌ [Supabase] Save aborted: Client not ready.")
+        print("❌ [Supabase] Save aborted: Client not ready.", flush=True)
         return
     try:
         payload_size = len(json.dumps(data))
         supabase.table("ecv_data").upsert({"id": 1, "content": data}).execute()
-        print(f"✅ [Supabase] Save Complete! Payload Size: {payload_size} bytes.")
+        print(f"✅ [Supabase] Save Complete! Payload Size: {payload_size} bytes.", flush=True)
     except Exception as e:
-        print(f"❌ [Supabase] Save Error: {e}")
+        print(f"❌ [Supabase] Save Error: {e}", flush=True)
         st.error(f"Gagal menyimpan data ke Supabase: {e}")
 
 # ════════════════════════════════════════════════════════════════════
-# 5. SEED (Initial state if Supabase is empty)
+# 5. SEED (Initial state)
 # ════════════════════════════════════════════════════════════════════
 SEED = {
     "masterPassword": sha256("capstone12"),
     "team_projects": {
         "main": {"name": "Sistem Informasi Akademik Terpadu", "url": "https://github.com/kelompok/ecv-project"},
-        "others": [
-            {"name": "Aplikasi Kasir Sederhana", "url": "https://github.com/kelompok/kasir"},
-            {"name": "Portfolio Website", "url": "https://github.com/kelompok/portfolio"}
-        ]
+        "others": [{"name": "Aplikasi Kasir Sederhana", "url": "https://github.com/kelompok/kasir"}]
     },
     "users": [
-        {
-            "id": "user1", "name": "Ahmad Fauzi", "role": "Frontend Developer", "nim": "221001001",
-            "email": "ahmad.fauzi@example.com", "phone": "+62 812-3456-7890", "location": "Jakarta",
-            "bio": "Mahasiswa Teknik Informatika yang berfokus pada pengembangan web dan mobile.",
-            "password": sha256("password123"), "profilePicture": "",
-            "education": [{"degree": "S1 Teknik Informatika", "institution": "Universitas Indonesia", "year": "2022 - Sekarang"}],
-            "experience": [], "skills": ["React", "Node.js"], "files": [],
-        },
-        {
-            "id": "user2", "name": "Siti Rahma", "role": "Backend Developer", "nim": "221001002",
-            "email": "siti.rahma@example.com", "phone": "+62 813-9876-5432", "location": "Bandung",
-            "bio": "Mahasiswi Sistem Informasi yang tertarik pada analisis data dan UI/UX design.",
-            "password": sha256("password123"), "profilePicture": "",
-            "education": [{"degree": "S1 Sistem Informasi", "institution": "ITB", "year": "2022 - Sekarang"}],
-            "experience": [], "skills": ["Python", "SQL"], "files": [],
-        },
-        {
-            "id": "user3", "name": "Budi Santoso", "role": "IoT Engineer", "nim": "221001003",
-            "email": "budi.santoso@example.com", "phone": "+62 857-1111-2222", "location": "Yogyakarta",
-            "bio": "Mahasiswa Teknik Komputer yang berfokus pada embedded systems dan IoT.",
-            "password": sha256("password123"), "profilePicture": "",
-            "education": [{"degree": "S1 Teknik Komputer", "institution": "UGM", "year": "2021 - Sekarang"}],
-            "experience": [], "skills": ["C++", "Arduino"], "files": [],
-        },
+        {"id": "user1", "name": "Ahmad Fauzi", "role": "Frontend Developer", "nim": "221001001", "email": "ahmad@example.com", "phone": "081234", "location": "Jakarta", "bio": "Mahasiswa TI.", "password": sha256("password123"), "profilePicture": "", "education": [], "experience": [], "skills": ["React"], "files": []},
+        {"id": "user2", "name": "Siti Rahma", "role": "Backend Developer", "nim": "221001002", "email": "siti@example.com", "phone": "081234", "location": "Bandung", "bio": "Mahasiswi SI.", "password": sha256("password123"), "profilePicture": "", "education": [], "experience": [], "skills": ["Python"], "files": []},
+        {"id": "user3", "name": "Budi Santoso", "role": "IoT Engineer", "nim": "221001003", "email": "budi@example.com", "phone": "081234", "location": "Jogja", "bio": "Mahasiswa TK.", "password": sha256("password123"), "profilePicture": "", "education": [], "experience": [], "skills": ["C++"], "files": []},
     ],
 }
 
 # ════════════════════════════════════════════════════════════════════
 # 6. STATE INITIALIZATION
 # ════════════════════════════════════════════════════════════════════
-for key, default in [
-    ("logged_in_as", None), ("is_master", False), ("save_version", 0),
-    ("flash", None), ("file_upload_version", 0), ("avatar_upload_version", 0),
-    ("scroll_to_top", False), ("view_user_id", None), ("proj_version", 0)
-]:
-    if key not in st.session_state:
-        st.session_state[key] = default
+for key, default in [("logged_in_as", None), ("is_master", False), ("save_version", 0), ("flash", None), ("file_upload_version", 0), ("avatar_upload_version", 0), ("scroll_to_top", False), ("view_user_id", None), ("proj_version", 0)]:
+    if key not in st.session_state: st.session_state[key] = default
 
 if "app_data" not in st.session_state:
     st.session_state.app_data = fetch_data_from_db()
@@ -287,12 +256,9 @@ body { background-color: #0f172a !important; }
 .stApp { background: transparent !important; color: #e2e8f0 !important; font-family: 'Inter', sans-serif !important; }
 .block-container { padding-top: 2rem !important; padding-bottom: 3rem !important; max-width: 1100px !important; position: relative; z-index: 10; }
 html, body, [class*="css"] { color: #e2e8f0 !important; }
-
-/* Unhide the Streamlit top bar for Manage App */
 #MainMenu, footer { display: none !important; }
 header[data-testid="stHeader"] { background: transparent !important; }
 [data-testid="stStatusWidget"] { display: flex !important; }
-
 [data-testid="stFileUploadDropzone"] small { display: none !important; }
 h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .title-main { text-align: center; font-size: 2.5rem; font-weight: 800; background: -webkit-linear-gradient(45deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
@@ -316,12 +282,9 @@ h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .btn-link { display: inline-flex; align-items: center; gap: 8px; color: #a78bfa !important; text-decoration: none !important; font-weight: 500; font-size: 0.9rem; margin-bottom: 8px; padding: 8px 12px; border-radius: 8px; background: rgba(139, 92, 246, 0.1); transition: background 0.2s; }
 .btn-link:hover { background: rgba(139, 92, 246, 0.2); }
 .btn-link.download { color: #f8fafc !important; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.1); }
-
-/* FIX: Hover effect via CSS instead of inline JS */
 .profile-card-link { text-decoration: none; color: inherit; display: block; }
 .profile-card-link .glass-card { transition: transform 0.2s ease-in-out; }
 .profile-card-link:hover .glass-card { transform: scale(1.02); }
-
 div[data-testid="stTabs"] { width: 100%; }
 div[data-testid="stTabs"] > div > div:first-child { display: flex; justify-content: center; width: 100%; }
 div[data-baseweb="tab-list"] { background: rgba(30, 41, 59, 0.6) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; border-radius: 12px !important; padding: 6px !important; backdrop-filter: blur(12px) !important; display: flex !important; gap: 8px !important; border-bottom: none !important; width: fit-content !important; margin: 0 auto 24px auto !important; }
@@ -410,16 +373,12 @@ def render_public_detail(u: dict):
 
     with col_right:
         st.markdown(f'<div class="glass-card"><div class="card-header">PROFIL</div><div class="list-desc">{esc(u.get("bio", "Belum ada deskripsi profil."))}</div></div>', unsafe_allow_html=True)
-        
         edu_html = "".join(f'<div class="list-item"><div class="list-title">{esc(e.get("degree", ""))}</div><div class="list-sub">{esc(e.get("institution", ""))} • {esc(e.get("year", ""))}</div></div>' for e in (u.get("education") or [])) or '<div class="list-sub">Belum ada data.</div>'
         st.markdown(f'<div class="glass-card"><div class="card-header">PENDIDIKAN</div>{edu_html}</div>', unsafe_allow_html=True)
-        
         exp_html = "".join(f'<div class="list-item"><div class="list-title">{esc(e.get("role", ""))}</div><div class="list-sub">{esc(e.get("company", ""))} • {esc(e.get("year", ""))}</div><div class="list-desc">{esc(e.get("description", ""))}</div></div>' for e in (u.get("experience") or [])) or '<div class="list-sub">Belum ada data.</div>'
         st.markdown(f'<div class="glass-card"><div class="card-header">PENGALAMAN</div>{exp_html}</div>', unsafe_allow_html=True)
-        
         skill_html = "".join(f'<span class="skill-chip">{esc(s)}</span>' for s in (u.get("skills") or [])) or '<div class="list-sub">Belum ada data.</div>'
         st.markdown(f'<div class="glass-card"><div class="card-header">KEAHLIAN</div><div>{skill_html}</div></div>', unsafe_allow_html=True)
-        
         files_html = ""
         for f in (u.get("files") or []):
             if f.get("url") and f.get("url") != "#":
@@ -428,10 +387,8 @@ def render_public_detail(u: dict):
         st.markdown(f'<div class="glass-card"><div class="card-header">BERKAS</div>{files_html}</div>', unsafe_allow_html=True)
 
 def render_public_view(data: dict):
-    if "profile" in st.query_params:
-        st.session_state.view_user_id = st.query_params["profile"]
-    if st.session_state.view_user_id is None:
-        render_public_grid(data["users"], data["team_projects"])
+    if "profile" in st.query_params: st.session_state.view_user_id = st.query_params["profile"]
+    if st.session_state.view_user_id is None: render_public_grid(data["users"], data["team_projects"])
     else:
         u = next((x for x in data["users"] if x["id"] == st.session_state.view_user_id), None)
         if u: render_public_detail(u)
