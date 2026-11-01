@@ -95,7 +95,9 @@ ALLOWED_MIMES = {"application/pdf", "image/png", "image/jpeg"}
 
 def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: str):
     """Uploads directly to Cloudinary and returns the secure URL."""
+    print(f"\n☁️ [Cloudinary] Uploading {filename}...")
     if not CLOUDINARY_READY:
+        print("❌ [Cloudinary] Not configured.")
         st.error("Cloudinary tidak dikonfigurasi. File tidak dapat disimpan.")
         return None
 
@@ -105,8 +107,10 @@ def upload_bytes(file_bytes: bytes, filename: str, user_id: str, resource_type: 
         result = cloudinary.uploader.upload(
             BytesIO(file_bytes), resource_type=resource_type, folder="ecv", public_id=unique_id
         )
+        print(f"✅ [Cloudinary] Upload successful: {result['secure_url']}")
         return {"url": result["secure_url"], "public_id": result["public_id"]}
     except Exception as e:
+        print(f"❌ [Cloudinary] Upload error: {e}")
         st.error(f"Gagal upload ke Cloudinary: {e}")
         return None
 
@@ -130,9 +134,11 @@ def sha256(s: str) -> str: return hashlib.sha256(s.encode("utf-8")).hexdigest()
 def is_hash(s: str) -> bool: return isinstance(s, str) and len(s) == 64 and all(c in "0123456789abcdef" for c in s)
 def esc(s) -> str: return html_lib.escape(str(s) if s is not None else "")
 
-def load_data() -> dict:
-    """Pulls the JSON from Supabase."""
+def fetch_data_from_db() -> dict:
+    """Pulls the JSON from Supabase and logs to console."""
+    print("\n📥 [DB] Requesting data from Supabase...")
     if not SUPABASE_READY:
+        print("❌ [DB] Supabase not ready (missing secrets).")
         st.error("⚠️ Supabase belum dikonfigurasi. Data tidak akan tersimpan permanen.")
         return SEED
 
@@ -140,14 +146,16 @@ def load_data() -> dict:
         response = supabase.table("ecv_data").select("content").eq("id", 1).execute()
         if response.data and response.data[0].get("content"):
             data = response.data[0]["content"]
+            print("✅ [DB] Data loaded successfully from Supabase.")
         else:
+            print("⚠️ [DB] No data found in Supabase. Initializing with SEED.")
             data = SEED
-            save_data(data)
     except Exception as e:
+        print(f"❌ [DB] Fetch error: {e}")
         st.error(f"Gagal memuat data dari Supabase: {e}")
         data = SEED
 
-    # Migration checks (ensure old schemas don't break the app)
+    # Migration checks
     changed = False
     if "masterPassword" not in data or not is_hash(data["masterPassword"]):
         data["masterPassword"] = sha256(data.get("masterPassword", "capstone12"))
@@ -167,17 +175,28 @@ def load_data() -> dict:
         if "otherProjects" in u: del u["otherProjects"]; changed = True
 
     if changed:
-        save_data(data)
-        
+        print("🔄 [DB] Schema migrated. Pushing changes to Supabase...")
+        try:
+            supabase.table("ecv_data").upsert({"id": 1, "content": data}).execute()
+            print("✅ [DB] Schema migration saved.")
+        except Exception as e:
+            print(f"❌ [DB] Migration save error: {e}")
+            
     return data
 
 def save_data(data: dict) -> None:
-    """Saves the JSON to Supabase."""
+    """Saves the JSON to Supabase and updates local cache."""
+    print("\n📤 [DB] Sending updates to Supabase...")
+    st.session_state.app_data = data
+    
     if not SUPABASE_READY:
+        print("❌ [DB] Save failed: Supabase not ready.")
         return
     try:
         supabase.table("ecv_data").upsert({"id": 1, "content": data}).execute()
+        print("✅ [DB] Data saved successfully!")
     except Exception as e:
+        print(f"❌ [DB] Error saving data: {e}")
         st.error(f"Gagal menyimpan data ke Supabase: {e}")
 
 # ════════════════════════════════════════════════════════════════════
@@ -221,7 +240,7 @@ SEED = {
 }
 
 # ════════════════════════════════════════════════════════════════════
-# 6. SESSION STATE
+# 6. STATE INITIALIZATION
 # ════════════════════════════════════════════════════════════════════
 for key, default in [
     ("logged_in_as", None), ("is_master", False), ("save_version", 0),
@@ -230,6 +249,12 @@ for key, default in [
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
+
+# Load from DB ONLY ONCE per session to avoid rate limits
+if "app_data" not in st.session_state:
+    st.session_state.app_data = fetch_data_from_db()
+
+data = st.session_state.app_data
 
 if st.session_state.scroll_to_top:
     components.html("<script>window.parent.scrollTo({ top: 0, behavior: 'smooth' });</script>", height=0)
@@ -245,7 +270,12 @@ body { background-color: #0f172a !important; }
 .stApp { background: transparent !important; color: #e2e8f0 !important; font-family: 'Inter', sans-serif !important; }
 .block-container { padding-top: 2rem !important; padding-bottom: 3rem !important; max-width: 1100px !important; position: relative; z-index: 10; }
 html, body, [class*="css"] { color: #e2e8f0 !important; }
-header[data-testid="stHeader"], #MainMenu, footer, [data-testid="stStatusWidget"] { display: none !important; }
+
+/* Unhide the Streamlit top bar for Manage App */
+#MainMenu, footer { display: none !important; }
+header[data-testid="stHeader"] { background: transparent !important; }
+[data-testid="stStatusWidget"] { display: flex !important; }
+
 [data-testid="stFileUploadDropzone"] small { display: none !important; }
 h1, h2, h3, h4, h5, h6 { color: #e2e8f0 !important; }
 .title-main { text-align: center; font-size: 2.5rem; font-weight: 800; background: -webkit-linear-gradient(45deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
@@ -592,7 +622,6 @@ def render_reset_password_tab(u: dict, data: dict):
 # ════════════════════════════════════════════════════════════════════
 # 11. ROUTING
 # ════════════════════════════════════════════════════════════════════
-data = load_data()
 st.markdown(build_css(), unsafe_allow_html=True)
 st.markdown(build_wave(), unsafe_allow_html=True)
 if st.session_state.logged_in_as: render_admin_panel(data)
